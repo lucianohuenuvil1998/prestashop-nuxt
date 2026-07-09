@@ -17,6 +17,8 @@ export interface Order {
   lines: OrderLine[]
   totals: OrderTotals
   createdAt: string
+  paymentMethodId?: string
+  shippingMethodName?: string
 }
 
 export interface OrderLine {

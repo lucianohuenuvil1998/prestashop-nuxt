@@ -12,6 +12,8 @@
 
 definePageMeta({ middleware: 'guest' })
 
+const { register } = useAuth()
+
 const form = reactive({
   civility: '',        // 1 = Sr., 2 = Sra. (id_gender en PS8)
   firstName: '',
@@ -51,7 +53,7 @@ const passwordStrengthColor = computed(() => {
 
 async function handleSubmit() {
   if (!form.acceptTerms) {
-    errorMessage.value = 'Debés aceptar los términos y condiciones para continuar.'
+    errorMessage.value = 'Debes aceptar los términos y condiciones para continuar.'
     return
   }
   if (form.password.length < 8) {
@@ -62,11 +64,27 @@ async function handleSubmit() {
   errorMessage.value = ''
   isLoading.value = true
 
-  // Phase 3: conectar con POST /api/auth/register
-  await new Promise((r) => setTimeout(r, 800))
-  isLoading.value = false
+  try {
+    await register({
+      civility: form.civility,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      password: form.password,
+      birthDate: form.birthDate || undefined,
+      newsletter: form.newsletter,
+      partnerOffers: form.partnerOffers,
+    })
 
-  await navigateTo('/account/login')
+    await navigateTo('/account')
+  }
+  catch (err: unknown) {
+    const fetchError = err as { data?: { statusMessage?: string } }
+    errorMessage.value = fetchError.data?.statusMessage ?? 'No se pudo crear la cuenta. Intenta nuevamente.'
+  }
+  finally {
+    isLoading.value = false
+  }
 }
 
 useSeoMeta({ title: 'Crear cuenta' })
@@ -79,7 +97,7 @@ useSeoMeta({ title: 'Crear cuenta' })
       <div class="card p-8">
         <div class="mb-6 text-center">
           <h1 class="text-xl font-bold text-gray-900">Crear cuenta</h1>
-          <p class="mt-1 text-sm text-gray-500">Completá tus datos para registrarte</p>
+          <p class="mt-1 text-sm text-gray-500">Completa tus datos para registrarte</p>
         </div>
 
         <!-- Error -->
@@ -272,9 +290,9 @@ useSeoMeta({ title: 'Crear cuenta' })
       </div>
 
       <p class="mt-6 text-center text-sm text-gray-500">
-        ¿Ya tenés cuenta?
+        ¿Ya tienes cuenta?
         <NuxtLink to="/account/login" class="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
-          Iniciá sesión
+          Inicia sesión
         </NuxtLink>
       </p>
 

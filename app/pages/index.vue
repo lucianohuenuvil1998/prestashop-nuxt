@@ -1,7 +1,11 @@
 <script setup lang="ts">
-const { data, status } = await useProducts()
+const [{ data, status }, { data: categories, status: categoriesStatus }] = await Promise.all([
+  useProducts(),
+  useCategories(),
+])
 
 const products = computed(() => data.value?.items ?? [])
+const categoryList = computed(() => categories.value ?? [])
 </script>
 
 <template>
@@ -21,6 +25,39 @@ const products = computed(() => data.value?.items ?? [])
             Ver catálogo completo
           </NuxtLink>
         </div>
+      </div>
+    </section>
+
+    <!-- Categorías -->
+    <section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 border-b border-gray-100">
+      <div class="flex items-baseline justify-between mb-8">
+        <h2 class="text-2xl font-bold tracking-tight text-gray-900">
+          Explora por categoría
+        </h2>
+        <NuxtLink
+          to="/catalog"
+          class="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+        >
+          Ver catálogo →
+        </NuxtLink>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="categoriesStatus === 'pending'" class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div v-for="n in 2" :key="n" class="card overflow-hidden animate-pulse">
+          <div class="aspect-[3/2] bg-gray-200" />
+          <div class="p-4 space-y-2">
+            <div class="h-4 w-2/3 rounded bg-gray-200" />
+            <div class="h-3 w-full rounded bg-gray-100" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Categorías -->
+      <CategoryGrid v-else-if="categoryList.length" :categories="categoryList" />
+
+      <div v-else class="py-8 text-center text-gray-400 text-sm">
+        No hay categorías disponibles.
       </div>
     </section>
 

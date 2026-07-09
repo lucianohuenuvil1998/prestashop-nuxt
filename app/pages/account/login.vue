@@ -35,7 +35,7 @@ useSeoMeta({ title: 'Iniciar sesión' })
       <div class="card p-8">
         <div class="mb-6 text-center">
           <h1 class="text-xl font-bold text-gray-900">Iniciar sesión</h1>
-          <p class="mt-1 text-sm text-gray-500">Accedé a tu cuenta</p>
+          <p class="mt-1 text-sm text-gray-500">Accede a tu cuenta</p>
         </div>
 
         <!-- Error -->
@@ -122,7 +122,7 @@ useSeoMeta({ title: 'Iniciar sesión' })
 
       <!-- Link a registro -->
       <p class="mt-6 text-center text-sm text-gray-500">
-        ¿No tenés cuenta?
+        ¿No tienes cuenta?
         <NuxtLink to="/account/register" class="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
           Crear una cuenta
         </NuxtLink>

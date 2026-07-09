@@ -212,7 +212,7 @@ useSeoMeta({
         <!-- CTA -->
         <div class="mt-8 space-y-2">
           <p v-if="needsVariantSelection" class="text-xs text-amber-600 font-medium">
-            Seleccioná una opción antes de agregar al carrito.
+            Selecciona una opción antes de agregar al carrito.
           </p>
           <button
             class="btn-primary w-full py-3 text-base transition-all"

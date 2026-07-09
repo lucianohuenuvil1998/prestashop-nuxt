@@ -51,3 +51,10 @@ export interface PlaceOrderPayload {
   shippingMethodId: number
   paymentMethodId: string
 }
+
+export interface PlaceOrderCustomer {
+  id: number
+  firstName: string
+  lastName: string
+  email: string
+}

@@ -9,6 +9,8 @@
  */
 
 import type { CheckoutSummary, ShippingMethod, CheckoutAddressInput } from '~~/shared/types/checkout.types'
+import type { AddressInput } from '~~/shared/types/customer.types'
+import type { Address } from '~~/shared/types/order.types'
 import type { Order } from '~~/shared/types/order.types'
 import { useCartStore } from '../../stores/cart.store'
 import { useAuthStore } from '../../stores/auth.store'
@@ -16,8 +18,6 @@ import { useAuthStore } from '../../stores/auth.store'
 export function useCheckout() {
   const cartStore = useCartStore()
   const authStore = useAuthStore()
-  const router = useRouter()
-
   // ─── Estado del stepper ──────────────────────────────────────────────────
   const step = ref<1 | 2 | 3>(1)
   const isPlacingOrder = ref(false)
@@ -37,6 +37,9 @@ export function useCheckout() {
     phone: '',
   })
 
+  const selectedAddressId = ref<number | null>(null)
+  const useNewAddress = ref(false)
+
   // ─── Selecciones ─────────────────────────────────────────────────────────
   const selectedShippingId = ref<number | null>(null)
   const selectedPaymentId = ref<string | null>(null)
@@ -46,6 +49,73 @@ export function useCheckout() {
     'checkout-summary',
     () => $fetch('/api/checkout/summary'),
   )
+
+  const { data: savedAddresses, pending: loadingAddresses } = useAsyncData<Address[]>(
+    'checkout-addresses',
+    () => $fetch('/api/account/addresses'),
+  )
+
+  function applyAddress(addr: Address): void {
+    address.firstName = addr.firstName
+    address.lastName = addr.lastName
+    address.company = addr.company ?? ''
+    address.address1 = addr.address1
+    address.address2 = addr.address2 ?? ''
+    address.city = addr.city
+    address.state = addr.state ?? ''
+    address.postcode = addr.postcode
+    address.country = addr.country
+    address.phone = addr.phone ?? ''
+  }
+
+  function selectSavedAddress(id: number): void {
+    useNewAddress.value = false
+    selectedAddressId.value = id
+    const found = savedAddresses.value?.find((a) => a.id === id)
+    if (found) applyAddress(found)
+  }
+
+  function enableNewAddress(): void {
+    useNewAddress.value = true
+    selectedAddressId.value = null
+    address.firstName = authStore.customer?.firstName ?? ''
+    address.lastName = authStore.customer?.lastName ?? ''
+    address.company = ''
+    address.address1 = ''
+    address.address2 = ''
+    address.city = ''
+    address.state = ''
+    address.postcode = ''
+    address.country = 'Argentina'
+    address.phone = ''
+  }
+
+  watch(savedAddresses, (addresses) => {
+    if (!addresses?.length || useNewAddress.value || selectedAddressId.value) return
+    selectSavedAddress(addresses[0].id)
+  }, { immediate: true })
+
+  const selectedSavedAddress = computed<Address | null>(() => {
+    if (!selectedAddressId.value || useNewAddress.value) return null
+    return savedAddresses.value?.find((a) => a.id === selectedAddressId.value) ?? null
+  })
+
+  function addressToInput(addr: CheckoutAddressInput): AddressInput {
+    const alias = addr.address1.trim().slice(0, 32) || 'Entrega'
+    return {
+      alias,
+      firstName: addr.firstName.trim(),
+      lastName: addr.lastName.trim(),
+      company: addr.company?.trim() || undefined,
+      address1: addr.address1.trim(),
+      address2: addr.address2?.trim() || undefined,
+      city: addr.city.trim(),
+      state: addr.state?.trim() || undefined,
+      postcode: addr.postcode.trim(),
+      country: addr.country.trim(),
+      phone: addr.phone?.trim() || undefined,
+    }
+  }
 
   // ─── Computed ────────────────────────────────────────────────────────────
   const selectedShipping = computed<ShippingMethod | null>(() => {
@@ -60,21 +130,50 @@ export function useCheckout() {
   })
 
   // ─── Validaciones ────────────────────────────────────────────────────────
-  function validateCurrentStep(): string | null {
-    if (step.value === 1) {
+  function validateStep(target: 1 | 2 | 3): string | null {
+    if (target === 1) {
+      if (!useNewAddress.value && selectedAddressId.value) return null
       if (!address.firstName.trim()) return 'El nombre es requerido'
       if (!address.lastName.trim()) return 'El apellido es requerido'
       if (!address.address1.trim()) return 'La dirección es requerida'
       if (!address.city.trim()) return 'La ciudad es requerida'
       if (!address.postcode.trim()) return 'El código postal es requerido'
     }
-    if (step.value === 2) {
+    if (target === 2) {
       if (!selectedShippingId.value) return 'Selecciona un método de envío'
     }
-    if (step.value === 3) {
+    if (target === 3) {
       if (!selectedPaymentId.value) return 'Selecciona un método de pago'
     }
     return null
+  }
+
+  function validateCurrentStep(): string | null {
+    return validateStep(step.value)
+  }
+
+  function validateAllSteps(): string | null {
+    for (const target of [1, 2, 3] as const) {
+      const error = validateStep(target)
+      if (error) return error
+    }
+    return null
+  }
+
+  function getFetchErrorMessage(err: unknown, fallback: string): string {
+    if (err && typeof err === 'object') {
+      const fetchErr = err as {
+        data?: { statusMessage?: string, message?: string }
+        statusMessage?: string
+        message?: string
+      }
+      return fetchErr.data?.statusMessage
+        ?? fetchErr.data?.message
+        ?? fetchErr.statusMessage
+        ?? fetchErr.message
+        ?? fallback
+    }
+    return fallback
   }
 
   // ─── Navegación ──────────────────────────────────────────────────────────
@@ -102,7 +201,7 @@ export function useCheckout() {
 
   // ─── Confirmación ────────────────────────────────────────────────────────
   async function placeOrder(): Promise<void> {
-    const error = validateCurrentStep()
+    const error = validateAllSteps()
     if (error) {
       stepError.value = error
       return
@@ -112,25 +211,53 @@ export function useCheckout() {
     stepError.value = null
 
     try {
+      let shippingAddressId = selectedAddressId.value
+      let billingAddressId = selectedAddressId.value
+
+      if (useNewAddress.value || !shippingAddressId) {
+        const created = await $fetch<Address>('/api/account/addresses', {
+          method: 'POST',
+          body: addressToInput(address),
+        })
+        shippingAddressId = created.id
+        billingAddressId = created.id
+        selectedAddressId.value = created.id
+        useNewAddress.value = false
+      }
+
       const order = await $fetch<Order>('/api/checkout/order', {
         method: 'POST',
         body: {
-          shippingMethodId: selectedShippingId.value,
-          paymentMethodId: selectedPaymentId.value,
-          shippingAddressId: 1,
-          billingAddressId: 1,
+          shippingMethodId: selectedShippingId.value!,
+          paymentMethodId: selectedPaymentId.value!,
+          shippingAddressId: shippingAddressId!,
+          billingAddressId: billingAddressId!,
         },
       })
 
+      const confirmationQuery = {
+        reference: order.reference,
+        total: String(order.totals.total),
+        currency: order.totals.currency,
+        payment: selectedPaymentId.value!,
+      }
+
+      try {
+        await navigateTo({ path: '/checkout/confirmation', query: confirmationQuery }, { replace: true })
+      }
+      catch {
+        const params = new URLSearchParams(confirmationQuery)
+        window.location.assign(`/checkout/confirmation?${params.toString()}`)
+      }
+
       // El servidor ya limpió la cookie — resetear el store del cliente
       cartStore.clearCart()
-
-      await router.push(
-        `/checkout/confirmation?reference=${order.reference}&total=${order.totals.total}&currency=${order.totals.currency}&payment=${selectedPaymentId.value}`,
-      )
     }
-    catch {
-      stepError.value = 'Error al procesar el pedido. Por favor, intenta nuevamente.'
+    catch (err) {
+      stepError.value = getFetchErrorMessage(
+        err,
+        'Error al procesar el pedido. Por favor, intenta nuevamente.',
+      )
     }
     finally {
       isPlacingOrder.value = false
@@ -147,6 +274,13 @@ export function useCheckout() {
     goToStep,
     // Address
     address,
+    savedAddresses: readonly(savedAddresses),
+    loadingAddresses: readonly(loadingAddresses),
+    selectedAddressId: readonly(selectedAddressId),
+    selectedSavedAddress,
+    useNewAddress: readonly(useNewAddress),
+    selectSavedAddress,
+    enableNewAddress,
     // Checkout options
     selectedShippingId,
     selectedPaymentId,

@@ -1,4 +1,4 @@
-import type { LoginCredentials, Customer } from '~~/shared/types/customer.types'
+import type { LoginCredentials, RegisterPayload, Customer } from '~~/shared/types/customer.types'
 import { useAuthStore } from '../../stores/auth.store'
 
 export function useAuth() {
@@ -9,6 +9,14 @@ export function useAuth() {
     const session = await $fetch<Pick<Customer, 'id' | 'email' | 'firstName' | 'lastName'>>(
       '/api/auth/login',
       { method: 'POST', body: credentials },
+    )
+    store.setSession(session)
+  }
+
+  async function register(payload: RegisterPayload): Promise<void> {
+    const session = await $fetch<Pick<Customer, 'id' | 'email' | 'firstName' | 'lastName'>>(
+      '/api/auth/register',
+      { method: 'POST', body: payload },
     )
     store.setSession(session)
   }
@@ -38,6 +46,7 @@ export function useAuth() {
     isAuthenticated: computed(() => store.isAuthenticated),
     customer: computed(() => store.customer),
     login,
+    register,
     logout,
     fetchCurrentUser,
   }

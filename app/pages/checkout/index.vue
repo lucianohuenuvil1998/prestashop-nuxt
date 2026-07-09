@@ -1,5 +1,8 @@
 <script setup lang="ts">
-definePageMeta({ layout: false })
+definePageMeta({ layout: false, middleware: 'auth' })
+
+const { init: initCart } = useCart()
+await initCart()
 
 const {
   step,
@@ -9,6 +12,13 @@ const {
   prevStep,
   goToStep,
   address,
+  savedAddresses,
+  loadingAddresses,
+  selectedAddressId,
+  selectedSavedAddress,
+  useNewAddress,
+  selectSavedAddress,
+  enableNewAddress,
   selectedShippingId,
   selectedPaymentId,
   summary,
@@ -29,7 +39,11 @@ const steps = [
 ]
 
 function formatPrice(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: currency.value }).format(value)
+  return new Intl.NumberFormat('es', { style: 'currency', currency: currency.value }).format(value)
+}
+
+function formatAddressLine(addr: { firstName: string, lastName: string, address1: string, city: string, postcode: string, country: string }): string {
+  return `${addr.firstName} ${addr.lastName} — ${addr.address1}, ${addr.city}, ${addr.postcode}, ${addr.country}`
 }
 </script>
 
@@ -141,13 +155,65 @@ function formatPrice(value: number): string {
 
             <!-- Resumen de dirección cuando está completo -->
             <div v-if="step > 1" class="px-6 pb-4 text-sm text-gray-600 border-t border-gray-100 pt-3">
-              {{ address.firstName }} {{ address.lastName }} —
-              {{ address.address1 }}, {{ address.city }}, {{ address.postcode }}, {{ address.country }}
+              <template v-if="selectedSavedAddress">
+                <span class="font-medium text-gray-700">{{ selectedSavedAddress.alias }}</span>
+                — {{ formatAddressLine(selectedSavedAddress) }}
+              </template>
+              <template v-else>
+                {{ formatAddressLine(address) }}
+              </template>
             </div>
 
-            <!-- Formulario de dirección -->
+            <!-- Paso 1: selector y formulario -->
             <div v-if="step === 1" class="px-6 pb-6 border-t border-gray-100">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div v-if="loadingAddresses" class="py-6 text-center text-gray-400 text-sm">
+                Cargando direcciones...
+              </div>
+
+              <template v-else>
+                <!-- Direcciones guardadas -->
+                <div v-if="savedAddresses?.length" class="mt-4 space-y-3">
+                  <p class="text-sm font-medium text-gray-700">Selecciona una dirección de entrega</p>
+
+                  <label
+                    v-for="saved in savedAddresses"
+                    :key="saved.id"
+                    class="flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all"
+                    :class="!useNewAddress && selectedAddressId === saved.id
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-gray-300'"
+                  >
+                    <input
+                      type="radio"
+                      :value="saved.id"
+                      :checked="!useNewAddress && selectedAddressId === saved.id"
+                      class="mt-0.5 accent-indigo-600"
+                      @change="selectSavedAddress(saved.id)"
+                    />
+                    <div class="flex-1 min-w-0">
+                      <p class="font-semibold text-gray-800 text-sm">{{ saved.alias }}</p>
+                      <p class="text-sm text-gray-600 mt-0.5">
+                        {{ saved.firstName }} {{ saved.lastName }}
+                      </p>
+                      <p class="text-sm text-gray-500 mt-0.5">
+                        {{ saved.address1 }}<template v-if="saved.address2">, {{ saved.address2 }}</template>,
+                        {{ saved.city }}, {{ saved.postcode }}, {{ saved.country }}
+                      </p>
+                      <p v-if="saved.phone" class="text-xs text-gray-400 mt-1">{{ saved.phone }}</p>
+                    </div>
+                  </label>
+
+                  <button
+                    type="button"
+                    class="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    @click="enableNewAddress"
+                  >
+                    + Usar otra dirección
+                  </button>
+                </div>
+
+                <!-- Formulario manual (sin direcciones o nueva dirección) -->
+                <div v-if="!savedAddresses?.length || useNewAddress" class="grid grid-cols-1 sm:grid-cols-2 gap-4" :class="savedAddresses?.length ? 'mt-6' : 'mt-4'">
                 <!-- Nombre -->
                 <div>
                   <label class="checkout-label">Nombre <span class="text-red-500">*</span></label>
@@ -208,7 +274,8 @@ function formatPrice(value: number): string {
                   <label class="checkout-label">Teléfono</label>
                   <input v-model="address.phone" type="tel" class="checkout-input" placeholder="+54 11 1234-5678" />
                 </div>
-              </div>
+                </div>
+              </template>
 
               <!-- Error + Botón -->
               <p v-if="stepError" class="mt-4 text-sm text-red-600 flex items-center gap-1.5">

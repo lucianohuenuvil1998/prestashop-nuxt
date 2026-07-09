@@ -2,6 +2,11 @@
 definePageMeta({ layout: false })
 
 const route = useRoute()
+const cartStore = useCartStore()
+
+onMounted(() => {
+  cartStore.clearCart()
+})
 
 const reference = computed(() => String(route.query.reference ?? ''))
 const total = computed(() => Number(route.query.total ?? 0))
@@ -17,7 +22,7 @@ const paymentLabels: Record<string, string> = {
 const paymentLabel = computed(() => paymentLabels[paymentId.value] ?? paymentId.value)
 
 function formatPrice(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: currency.value }).format(value)
+  return new Intl.NumberFormat('es', { style: 'currency', currency: currency.value }).format(value)
 }
 </script>
 
@@ -186,7 +191,11 @@ function formatPrice(value: number): string {
 
       <!-- Acciones -->
       <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-        <NuxtLink to="/account"
+        <NuxtLink to="/"
+          class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold">
+          Continuar
+        </NuxtLink>
+        <NuxtLink to="/account/orders"
           class="inline-flex items-center justify-center gap-2 border border-gray-300 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -195,7 +204,7 @@ function formatPrice(value: number): string {
           Ver mis pedidos
         </NuxtLink>
         <NuxtLink to="/catalog"
-          class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
+          class="inline-flex items-center justify-center gap-2 border border-gray-300 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M4 6h16M4 10h16M4 14h16M4 18h16" />

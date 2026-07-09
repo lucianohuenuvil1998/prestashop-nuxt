@@ -10,8 +10,10 @@
 
 import type { Order } from '~~/shared/types/order.types'
 import type { PlaceOrderPayload } from '~~/shared/types/api.types'
+import type { Customer } from '~~/shared/types/customer.types'
 import type { CheckoutSummary, ShippingMethod, PaymentMethod } from '~~/shared/types/checkout.types'
 import { cartRepository } from '../repositories'
+import { mockOrderStore } from '../repositories/mock/mock-order.store'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -51,7 +53,7 @@ const MOCK_PAYMENT_METHODS: PaymentMethod[] = [
   {
     id: 'check',
     name: 'Pago con cheque',
-    description: 'Envíanos tu cheque junto con el número de pedido. Procesamos al recibir el cheque.',
+    description: 'Envía tu cheque junto con el número de pedido. Procesamos al recibirlo.',
   },
   {
     id: 'cash_on_delivery',
@@ -90,7 +92,7 @@ export const CheckoutService = {
    * desde el carrito y aplica el costo de envío seleccionado.
    * En PS8 real: delegar en CheckoutAdapter.placeOrder(payload).
    */
-  async placeOrder(payload: PlaceOrderPayload): Promise<Order> {
+  async placeOrder(payload: PlaceOrderPayload, customer: Customer): Promise<Order> {
     const cart = await cartRepository.findById(payload.cartId)
     if (!cart || cart.items.length === 0) {
       throw new Error('El carrito está vacío')
@@ -99,6 +101,13 @@ export const CheckoutService = {
     const shippingMethod = MOCK_SHIPPING_METHODS.find((m) => m.id === payload.shippingMethodId)
     if (!shippingMethod) {
       throw new Error('Método de envío no válido')
+    }
+
+    const shippingAddress = customer.addresses.find((a) => a.id === payload.shippingAddressId)
+    const billingAddress = customer.addresses.find((a) => a.id === payload.billingAddressId)
+
+    if (!shippingAddress || !billingAddress) {
+      throw new Error('Dirección no válida')
     }
 
     const shippingCost = shippingMethod.price
@@ -110,41 +119,13 @@ export const CheckoutService = {
       reference: generateReference(),
       status: 'awaiting_payment',
       customer: {
-        id: 1,
-        firstName: 'Cliente',
-        lastName: 'Demo',
-        email: 'cliente@test.com',
+        id: customer.id,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        email: customer.email,
       },
-      shippingAddress: {
-        id: 1,
-        alias: 'Principal',
-        firstName: 'Cliente',
-        lastName: 'Demo',
-        company: null,
-        address1: 'Av. Corrientes 1234',
-        address2: null,
-        city: 'Buenos Aires',
-        state: 'Buenos Aires',
-        postcode: 'C1043',
-        country: 'Argentina',
-        countryCode: 'AR',
-        phone: null,
-      },
-      billingAddress: {
-        id: 1,
-        alias: 'Principal',
-        firstName: 'Cliente',
-        lastName: 'Demo',
-        company: null,
-        address1: 'Av. Corrientes 1234',
-        address2: null,
-        city: 'Buenos Aires',
-        state: 'Buenos Aires',
-        postcode: 'C1043',
-        country: 'Argentina',
-        countryCode: 'AR',
-        phone: null,
-      },
+      shippingAddress,
+      billingAddress,
       lines: cart.items.map((item, idx) => ({
         id: idx + 1,
         productId: item.productId,
@@ -163,7 +144,11 @@ export const CheckoutService = {
         currency: cart.totals.currency,
       },
       createdAt: new Date().toISOString(),
+      paymentMethodId: payload.paymentMethodId,
+      shippingMethodName: shippingMethod.name,
     }
+
+    mockOrderStore.save(order)
 
     return order
   },

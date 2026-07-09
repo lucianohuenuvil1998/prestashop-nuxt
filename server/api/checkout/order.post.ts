@@ -11,6 +11,7 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { CheckoutService } from '../../services/checkout.service'
 import { getCartId, clearCartId } from '../../utils/session'
+import { getAuthenticatedCustomer } from '../../utils/auth'
 import type { PlaceOrderPayload } from '~~/shared/types/api.types'
 
 export default defineEventHandler(async (event) => {
@@ -26,16 +27,28 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Faltan datos de checkout' })
   }
 
-  const order = await CheckoutService.placeOrder({
-    cartId,
-    shippingAddressId: body.shippingAddressId ?? 1,
-    billingAddressId: body.billingAddressId ?? 1,
-    shippingMethodId: body.shippingMethodId,
-    paymentMethodId: body.paymentMethodId,
-  })
+  if (!body.shippingAddressId || !body.billingAddressId) {
+    throw createError({ statusCode: 400, statusMessage: 'Selecciona una dirección de entrega' })
+  }
 
-  // La orden fue creada — borrar la cookie para que el cliente inicie un carrito nuevo
-  clearCartId(event)
+  const customer = getAuthenticatedCustomer(event)
 
-  return order
+  try {
+    const order = await CheckoutService.placeOrder({
+      cartId,
+      shippingAddressId: body.shippingAddressId,
+      billingAddressId: body.billingAddressId,
+      shippingMethodId: body.shippingMethodId,
+      paymentMethodId: body.paymentMethodId,
+    }, customer)
+
+    // La orden fue creada — borrar la cookie para que el cliente inicie un carrito nuevo
+    clearCartId(event)
+
+    return order
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : 'Error al procesar el pedido'
+    throw createError({ statusCode: 400, statusMessage: message })
+  }
 })

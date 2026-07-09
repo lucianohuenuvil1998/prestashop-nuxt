@@ -1,100 +1,123 @@
 <script setup lang="ts">
 /**
  * Dashboard de cuenta del cliente.
- * Secciones alineadas con "Mon compte" de PrestaShop 8.
+ * Layout alineado con "Mi cuenta" de PrestaShop 8:
+ * grid de tarjetas con icono centrado + etiqueta en mayúsculas.
  */
 
 definePageMeta({ middleware: 'auth' })
 
-const { customer, logout } = useAuth()
+const { logout } = useAuth()
 
-const sections = [
+// Direcciones del cliente para etiqueta dinámica (PS8 cambia el texto si no hay ninguna)
+const { data: fullCustomer } = await useAsyncData('account-customer', () =>
+  $fetch<import('~~/shared/types/customer.types').Customer>('/api/auth/me'),
+)
+
+const addressLabel = computed(() =>
+  fullCustomer.value?.addresses?.length
+    ? 'Mis direcciones'
+    : 'Añadir primera dirección',
+)
+
+const sections = computed(() => [
   {
-    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
-    title: 'Historial de pedidos',
-    description: 'Consultá el estado y el detalle de todos tus pedidos.',
-    to: '/account/orders',
-  },
-  {
-    icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-    title: 'Información personal',
-    description: 'Actualizá tu nombre, email, contraseña y fecha de nacimiento.',
+    icon: 'identity',
+    label: 'Mis datos personales',
     to: '/account/profile',
   },
   {
-    icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z',
-    title: 'Mis direcciones',
-    description: 'Gestioná tus direcciones de envío y facturación.',
+    icon: 'address',
+    label: addressLabel.value,
     to: '/account/addresses',
   },
   {
-    icon: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z',
-    title: 'Mis cupones',
-    description: 'Revisá los cupones y códigos de descuento disponibles.',
-    to: '/account/vouchers',
+    icon: 'orders',
+    label: 'Historial y detalles de mis pedidos',
+    to: '/account/orders',
   },
-  {
-    icon: 'M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 2 2 2-2 2 2 2-2 4 2z',
-    title: 'Devoluciones',
-    description: 'Gestioná las solicitudes de devolución de mercadería.',
-    to: '/account/returns',
-  },
-  {
-    icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
-    title: 'Créditos',
-    description: 'Consultá los créditos disponibles en tu cuenta.',
-    to: '/account/credit-slips',
-  },
-]
+])
 
 useSeoMeta({ title: 'Mi cuenta' })
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+  <div class="bg-gray-50 min-h-full">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
 
-    <!-- Cabecera -->
-    <div class="mb-8 flex items-start justify-between">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight text-gray-900">
-          Bienvenida, {{ customer?.firstName }}
-        </h1>
-        <p class="mt-1 text-sm text-gray-500">{{ customer?.email }}</p>
+      <!-- Breadcrumb (PS8) -->
+      <nav class="mb-6 text-sm text-gray-500">
+        <NuxtLink to="/" class="hover:text-gray-800 transition-colors">Inicio</NuxtLink>
+        <span class="mx-1.5">/</span>
+        <span class="text-gray-800">Mi cuenta</span>
+      </nav>
+
+      <!-- Título -->
+      <h1 class="text-2xl font-normal text-gray-800 mb-8">Mi cuenta</h1>
+
+      <!-- Grid de tarjetas (estilo PS8) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <NuxtLink
+          v-for="section in sections"
+          :key="section.to"
+          :to="section.to"
+          class="account-tile group"
+        >
+          <!-- Icono -->
+          <div class="account-tile__icon">
+            <!-- Dirección -->
+            <svg v-if="section.icon === 'address'" class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z" />
+              <path d="M19 11h-2v2h2v-2zm-14 0H3v2h2v-2z" opacity="0" />
+            </svg>
+
+            <!-- Pedidos -->
+            <svg v-else-if="section.icon === 'orders'" class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z" />
+            </svg>
+
+            <!-- Datos personales -->
+            <svg v-else-if="section.icon === 'identity'" class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 2.5c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5S9.5 10.38 9.5 9 10.62 6.5 12 6.5zM18 18H6v-1.2c0-2 4-3.1 6-3.1s6 1.1 6 3.1V18z" />
+            </svg>
+          </div>
+
+          <!-- Etiqueta -->
+          <span class="account-tile__label">{{ section.label }}</span>
+        </NuxtLink>
       </div>
-      <button
-        class="btn-secondary text-sm"
-        @click="logout"
-      >
-        Cerrar sesión
-      </button>
+
+      <!-- Cerrar sesión (abajo, como PS8) -->
+      <div class="mt-10 text-center">
+        <button
+          type="button"
+          class="text-sm text-sky-600 hover:text-sky-700 hover:underline transition-colors"
+          @click="logout"
+        >
+          Cerrar sesión
+        </button>
+      </div>
+
     </div>
-
-    <!-- Grid de secciones (estructura PS8) -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <NuxtLink
-        v-for="section in sections"
-        :key="section.to"
-        :to="section.to"
-        class="card group flex items-start gap-4 p-5 hover:shadow-md transition-shadow duration-200"
-      >
-        <!-- Ícono -->
-        <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
-          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" :d="section.icon" />
-          </svg>
-        </div>
-
-        <!-- Texto -->
-        <div class="min-w-0">
-          <p class="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-            {{ section.title }}
-          </p>
-          <p class="mt-0.5 text-xs text-gray-500 leading-relaxed">
-            {{ section.description }}
-          </p>
-        </div>
-      </NuxtLink>
-    </div>
-
   </div>
 </template>
+
+<style scoped>
+.account-tile {
+  @apply flex flex-col items-center justify-center
+         bg-white border border-gray-200
+         px-6 py-10 min-h-[180px]
+         text-center no-underline
+         hover:shadow-md transition-shadow duration-200;
+}
+
+.account-tile__icon {
+  @apply text-gray-700 mb-5
+         group-hover:text-gray-900 transition-colors;
+}
+
+.account-tile__label {
+  @apply text-xs font-semibold uppercase tracking-wide text-gray-700 leading-snug
+         group-hover:text-gray-900 transition-colors;
+}
+</style>

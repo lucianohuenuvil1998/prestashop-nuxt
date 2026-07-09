@@ -31,6 +31,13 @@ const firstName = computed(() => customer.value?.firstName ?? '')
           >
             Catálogo
           </NuxtLink>
+          <NuxtLink
+            to="/contact"
+            class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            active-class="text-gray-900"
+          >
+            Contacto
+          </NuxtLink>
         </nav>
 
         <!-- Acciones -->

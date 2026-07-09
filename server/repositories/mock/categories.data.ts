@@ -7,7 +7,7 @@ export const MOCK_CATEGORIES: Category[] = [
     slug: 'electronica',
     description: 'Dispositivos, periféricos y accesorios tecnológicos.',
     parentId: null,
-    image: null,
+    image: 'https://picsum.photos/seed/cat-electronica/600/400',
     position: 0,
   },
   {
@@ -16,7 +16,7 @@ export const MOCK_CATEGORIES: Category[] = [
     slug: 'hogar-y-oficina',
     description: 'Equipamiento ergonómico e iluminación para tu espacio de trabajo.',
     parentId: null,
-    image: null,
+    image: 'https://picsum.photos/seed/cat-hogar/600/400',
     position: 1,
   },
 ]
