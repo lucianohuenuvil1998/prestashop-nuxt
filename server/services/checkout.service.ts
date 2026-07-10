@@ -8,8 +8,8 @@
  * el método placeOrder para que deleguen en CheckoutAdapter.
  */
 
-import type { Order } from '~~/shared/types/order.types'
-import type { PlaceOrderPayload } from '~~/shared/types/api.types'
+import type { Order, Address } from '~~/shared/types/order.types'
+import type { PlaceOrderPayload, GuestAddressPayload } from '~~/shared/types/api.types'
 import type { Customer } from '~~/shared/types/customer.types'
 import type { CheckoutSummary, ShippingMethod, PaymentMethod } from '~~/shared/types/checkout.types'
 import { cartRepository } from '../repositories'
@@ -74,6 +74,26 @@ function generateReference(): string {
   return `DEMO-${random}`
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function guestAddressToAddress(g: GuestAddressPayload): Address {
+  return {
+    id: 0,
+    alias: 'Entrega',
+    firstName: g.firstName,
+    lastName: g.lastName,
+    company: g.company ?? null,
+    address1: g.address1,
+    address2: g.address2 ?? null,
+    city: g.city,
+    state: g.state ?? null,
+    postcode: g.postcode,
+    country: g.country,
+    countryCode: '',
+    phone: g.phone ?? null,
+  }
+}
+
 // ─── Servicio ─────────────────────────────────────────────────────────────────
 
 export const CheckoutService = {
@@ -92,7 +112,10 @@ export const CheckoutService = {
    * desde el carrito y aplica el costo de envío seleccionado.
    * En PS8 real: delegar en CheckoutAdapter.placeOrder(payload).
    */
-  async placeOrder(payload: PlaceOrderPayload, customer: Customer): Promise<Order> {
+  async placeOrder(
+    payload: PlaceOrderPayload,
+    customer: Customer | null,
+  ): Promise<Order> {
     const cart = await cartRepository.findById(payload.cartId)
     if (!cart || cart.items.length === 0) {
       throw new Error('El carrito está vacío')
@@ -103,12 +126,26 @@ export const CheckoutService = {
       throw new Error('Método de envío no válido')
     }
 
-    const shippingAddress = customer.addresses.find((a) => a.id === payload.shippingAddressId)
-    const billingAddress = customer.addresses.find((a) => a.id === payload.billingAddressId)
+    let shippingAddress: Address
+    let billingAddress: Address
 
-    if (!shippingAddress || !billingAddress) {
-      throw new Error('Dirección no válida')
+    if (customer) {
+      const found = customer.addresses.find((a) => a.id === payload.shippingAddressId)
+      if (!found) throw new Error('Dirección no válida')
+      shippingAddress = found
+      billingAddress = customer.addresses.find((a) => a.id === payload.billingAddressId) ?? found
     }
+    else {
+      if (!payload.guestAddress || !payload.guestEmail) {
+        throw new Error('Datos de invitado incompletos')
+      }
+      shippingAddress = guestAddressToAddress(payload.guestAddress)
+      billingAddress = shippingAddress
+    }
+
+    const orderCustomer = customer
+      ? { id: customer.id, firstName: customer.firstName, lastName: customer.lastName, email: customer.email }
+      : { id: 0, firstName: shippingAddress.firstName, lastName: shippingAddress.lastName, email: payload.guestEmail! }
 
     const shippingCost = shippingMethod.price
     const subtotal = cart.totals.subtotal
@@ -118,12 +155,7 @@ export const CheckoutService = {
       id: Math.floor(Math.random() * 90_000) + 10_000,
       reference: generateReference(),
       status: 'awaiting_payment',
-      customer: {
-        id: customer.id,
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        email: customer.email,
-      },
+      customer: orderCustomer,
       shippingAddress,
       billingAddress,
       lines: cart.items.map((item, idx) => ({

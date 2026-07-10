@@ -11,7 +11,8 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { CheckoutService } from '../../services/checkout.service'
 import { getCartId, clearCartId } from '../../utils/session'
-import { getAuthenticatedCustomer } from '../../utils/auth'
+import { getOptionalCustomer } from '../../utils/auth'
+import { validateEmail, validateCheckoutAddress } from '~~/shared/validation/form.validation'
 import type { PlaceOrderPayload } from '~~/shared/types/api.types'
 
 export default defineEventHandler(async (event) => {
@@ -27,11 +28,23 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Faltan datos de checkout' })
   }
 
-  if (!body.shippingAddressId || !body.billingAddressId) {
-    throw createError({ statusCode: 400, statusMessage: 'Selecciona una dirección de entrega' })
-  }
+  const customer = getOptionalCustomer(event)
 
-  const customer = getAuthenticatedCustomer(event)
+  if (customer) {
+    if (!body.shippingAddressId || !body.billingAddressId) {
+      throw createError({ statusCode: 400, statusMessage: 'Selecciona una dirección de entrega' })
+    }
+  }
+  else {
+    const emailError = validateEmail(body.guestEmail ?? '')
+    if (emailError) {
+      throw createError({ statusCode: 400, statusMessage: emailError })
+    }
+    const addressError = validateCheckoutAddress(body.guestAddress ?? {})
+    if (addressError) {
+      throw createError({ statusCode: 400, statusMessage: addressError })
+    }
+  }
 
   try {
     const order = await CheckoutService.placeOrder({
@@ -40,9 +53,10 @@ export default defineEventHandler(async (event) => {
       billingAddressId: body.billingAddressId,
       shippingMethodId: body.shippingMethodId,
       paymentMethodId: body.paymentMethodId,
+      guestEmail: body.guestEmail,
+      guestAddress: body.guestAddress,
     }, customer)
 
-    // La orden fue creada — borrar la cookie para que el cliente inicie un carrito nuevo
     clearCartId(event)
 
     return order

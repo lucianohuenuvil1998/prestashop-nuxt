@@ -23,4 +23,9 @@ export interface IProductRepository {
    * Retorna null si no existe ningún producto con ese slug.
    */
   findBySlug(slug: string): Promise<Product | null>
+
+  /**
+   * Devuelve productos relacionados al dado (misma categoría, excluyendo el actual).
+   */
+  findRelated(slug: string, limit?: number): Promise<Product[]>
 }

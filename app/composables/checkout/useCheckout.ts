@@ -12,6 +12,7 @@ import type { CheckoutSummary, ShippingMethod, CheckoutAddressInput } from '~~/s
 import type { AddressInput } from '~~/shared/types/customer.types'
 import type { Address } from '~~/shared/types/order.types'
 import type { Order } from '~~/shared/types/order.types'
+import { validateCheckoutAddress, validateEmail, FIELD_LIMITS } from '~~/shared/validation/form.validation'
 import { useCartStore } from '../../stores/cart.store'
 import { useAuthStore } from '../../stores/auth.store'
 
@@ -37,6 +38,9 @@ export function useCheckout() {
     phone: '',
   })
 
+  const isGuest = computed(() => !authStore.isAuthenticated)
+  const guestEmail = ref('')
+
   const selectedAddressId = ref<number | null>(null)
   const useNewAddress = ref(false)
 
@@ -52,7 +56,7 @@ export function useCheckout() {
 
   const { data: savedAddresses, pending: loadingAddresses } = useAsyncData<Address[]>(
     'checkout-addresses',
-    () => $fetch('/api/account/addresses'),
+    () => authStore.isAuthenticated ? $fetch('/api/account/addresses') : Promise.resolve([]),
   )
 
   function applyAddress(addr: Address): void {
@@ -101,7 +105,7 @@ export function useCheckout() {
   })
 
   function addressToInput(addr: CheckoutAddressInput): AddressInput {
-    const alias = addr.address1.trim().slice(0, 32) || 'Entrega'
+    const alias = addr.address1.trim().slice(0, FIELD_LIMITS.alias) || 'Entrega'
     return {
       alias,
       firstName: addr.firstName.trim(),
@@ -132,12 +136,13 @@ export function useCheckout() {
   // ─── Validaciones ────────────────────────────────────────────────────────
   function validateStep(target: 1 | 2 | 3): string | null {
     if (target === 1) {
+      if (isGuest.value) {
+        const emailErr = validateEmail(guestEmail.value, 'El correo de contacto')
+        if (emailErr) return emailErr
+        return validateCheckoutAddress(address)
+      }
       if (!useNewAddress.value && selectedAddressId.value) return null
-      if (!address.firstName.trim()) return 'El nombre es requerido'
-      if (!address.lastName.trim()) return 'El apellido es requerido'
-      if (!address.address1.trim()) return 'La dirección es requerida'
-      if (!address.city.trim()) return 'La ciudad es requerida'
-      if (!address.postcode.trim()) return 'El código postal es requerido'
+      return validateCheckoutAddress(address)
     }
     if (target === 2) {
       if (!selectedShippingId.value) return 'Selecciona un método de envío'
@@ -211,28 +216,53 @@ export function useCheckout() {
     stepError.value = null
 
     try {
-      let shippingAddressId = selectedAddressId.value
-      let billingAddressId = selectedAddressId.value
+      let orderBody: Record<string, unknown>
 
-      if (useNewAddress.value || !shippingAddressId) {
-        const created = await $fetch<Address>('/api/account/addresses', {
-          method: 'POST',
-          body: addressToInput(address),
-        })
-        shippingAddressId = created.id
-        billingAddressId = created.id
-        selectedAddressId.value = created.id
-        useNewAddress.value = false
+      if (isGuest.value) {
+        orderBody = {
+          shippingMethodId: selectedShippingId.value!,
+          paymentMethodId: selectedPaymentId.value!,
+          guestEmail: guestEmail.value,
+          guestAddress: {
+            firstName: address.firstName,
+            lastName: address.lastName,
+            company: address.company || undefined,
+            address1: address.address1,
+            address2: address.address2 || undefined,
+            city: address.city,
+            state: address.state || undefined,
+            postcode: address.postcode,
+            country: address.country,
+            phone: address.phone || undefined,
+          },
+        }
       }
+      else {
+        let shippingAddressId = selectedAddressId.value
+        let billingAddressId = selectedAddressId.value
 
-      const order = await $fetch<Order>('/api/checkout/order', {
-        method: 'POST',
-        body: {
+        if (useNewAddress.value || !shippingAddressId) {
+          const created = await $fetch<Address>('/api/account/addresses', {
+            method: 'POST',
+            body: addressToInput(address),
+          })
+          shippingAddressId = created.id
+          billingAddressId = created.id
+          selectedAddressId.value = created.id
+          useNewAddress.value = false
+        }
+
+        orderBody = {
           shippingMethodId: selectedShippingId.value!,
           paymentMethodId: selectedPaymentId.value!,
           shippingAddressId: shippingAddressId!,
           billingAddressId: billingAddressId!,
-        },
+        }
+      }
+
+      const order = await $fetch<Order>('/api/checkout/order', {
+        method: 'POST',
+        body: orderBody,
       })
 
       const confirmationQuery = {
@@ -272,6 +302,9 @@ export function useCheckout() {
     nextStep,
     prevStep,
     goToStep,
+    // Guest
+    isGuest,
+    guestEmail,
     // Address
     address,
     savedAddresses: readonly(savedAddresses),

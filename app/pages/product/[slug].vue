@@ -6,6 +6,7 @@ const route = useRoute()
 const slug = computed(() => String(route.params.slug))
 
 const { data: product, status } = await useProduct(slug)
+const { data: relatedProducts } = await useRelatedProducts(slug)
 const { addItem } = useCart()
 
 const selectedImage = ref(0)
@@ -125,19 +126,15 @@ useSeoMeta({
       <div class="flex flex-col">
 
         <!-- Breadcrumb -->
-        <nav class="flex items-center gap-1.5 text-xs text-gray-400">
-          <NuxtLink to="/" class="hover:text-gray-600 transition-colors">Inicio</NuxtLink>
-          <span>/</span>
-          <NuxtLink
-            v-if="product.categories[0]"
-            to="/catalog"
-            class="hover:text-gray-600 transition-colors"
-          >
-            {{ product.categories[0].name }}
-          </NuxtLink>
-          <span>/</span>
-          <span class="text-gray-600 truncate">{{ product.name }}</span>
-        </nav>
+        <AppBreadcrumb
+          :items="[
+            { label: 'Inicio', to: '/' },
+            product.categories[0]
+              ? { label: product.categories[0].name, to: `/catalog?categoryId=${product.categories[0].id}` }
+              : { label: 'Catálogo', to: '/catalog' },
+            { label: product.name },
+          ]"
+        />
 
         <!-- Nombre -->
         <h1 class="mt-3 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
@@ -195,13 +192,16 @@ useSeoMeta({
             <button
               v-for="variant in product.variants"
               :key="variant.id"
-              class="rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
-              :class="
+              class="relative rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
+              :class="[
                 selectedVariant?.id === variant.id
                   ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-              "
+                  : variant.stock.isInStock
+                    ? 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed line-through',
+              ]"
               :disabled="!variant.stock.isInStock"
+              :title="!variant.stock.isInStock ? 'Sin stock' : ''"
               @click="selectVariant(variant)"
             >
               {{ Object.values(variant.attributes)[0] }}
@@ -210,17 +210,46 @@ useSeoMeta({
         </div>
 
         <!-- CTA -->
-        <div class="mt-8 space-y-2">
-          <p v-if="needsVariantSelection" class="text-xs text-amber-600 font-medium">
+        <div class="mt-8 space-y-3">
+          <!-- Sin stock: aviso destacado -->
+          <div
+            v-if="!isInStock"
+            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center gap-3"
+          >
+            <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <div>
+              <p class="text-sm font-semibold text-red-700">Producto sin stock</p>
+              <p class="text-xs text-red-500 mt-0.5">Actualmente no disponible. Vuelve pronto.</p>
+            </div>
+          </div>
+
+          <p v-else-if="needsVariantSelection" class="text-xs text-amber-600 font-medium">
             Selecciona una opción antes de agregar al carrito.
           </p>
+
           <button
-            class="btn-primary w-full py-3 text-base transition-all"
+            class="w-full py-3 text-base font-semibold rounded-xl transition-all"
+            :class="isInStock && !needsVariantSelection
+              ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
             :disabled="!isInStock || isAddingToCart || needsVariantSelection"
             @click="handleAddToCart"
           >
-            <span v-if="isAddingToCart">Agregando...</span>
-            <span v-else-if="addedFeedback">¡Agregado al carrito!</span>
+            <span v-if="isAddingToCart" class="flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Agregando...
+            </span>
+            <span v-else-if="addedFeedback" class="flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              ¡Agregado al carrito!
+            </span>
             <span v-else-if="!isInStock">Sin stock</span>
             <span v-else>Agregar al carrito</span>
           </button>
@@ -237,6 +266,28 @@ useSeoMeta({
 
       </div>
     </div>
+
+    <!-- ── Productos relacionados ─────────────────────────────────────────── -->
+    <section v-if="relatedProducts?.length" class="mt-16 border-t border-gray-100 pt-12">
+      <div class="flex items-baseline justify-between mb-6">
+        <h2 class="text-xl font-bold text-gray-900">También te puede interesar</h2>
+        <NuxtLink
+          v-if="product?.categories[0]"
+          :to="`/catalog?categoryId=${product.categories[0].id}`"
+          class="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+        >
+          Ver más →
+        </NuxtLink>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-4 sm:gap-6">
+        <ProductCard
+          v-for="related in relatedProducts"
+          :key="related.id"
+          :product="related"
+        />
+      </div>
+    </section>
 
   </div>
 </template>

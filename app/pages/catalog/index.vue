@@ -4,15 +4,18 @@ import type { ProductFilters } from '~~/shared/types/api.types'
 const route = useRoute()
 const router = useRouter()
 
-// ─── Filtros derivados de la URL ────────────────────────────────────────────
+const PER_PAGE = 12
+
+// ─── Filtros derivados de la URL ─────────────────────────────────────────────
 const filters = computed<ProductFilters>(() => ({
   search: route.query.search ? String(route.query.search) : undefined,
   categoryId: route.query.categoryId ? Number(route.query.categoryId) : undefined,
   sort: (route.query.sort as ProductFilters['sort']) ?? undefined,
-  perPage: 24,
+  page: route.query.page ? Number(route.query.page) : 1,
+  perPage: PER_PAGE,
 }))
 
-// ─── Datos ──────────────────────────────────────────────────────────────────
+// ─── Datos ───────────────────────────────────────────────────────────────────
 const [{ data, status }, { data: categories }] = await Promise.all([
   useProducts(filters),
   useCategories(),
@@ -20,23 +23,31 @@ const [{ data, status }, { data: categories }] = await Promise.all([
 
 const products = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
+const totalPages = computed(() => data.value?.totalPages ?? 1)
+const currentPage = computed(() => data.value?.page ?? 1)
 const categoryList = computed(() => categories.value ?? [])
 
 const hasFilters = computed(
   () => !!route.query.search || !!route.query.categoryId || !!route.query.sort,
 )
 
-// ─── Acciones de filtrado (actualizan la URL) ────────────────────────────────
+// ─── Navegación de página ────────────────────────────────────────────────────
+function setPage(page: number) {
+  router.push({ query: { ...route.query, page: page === 1 ? undefined : page } })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// ─── Filtros (resetean la página) ────────────────────────────────────────────
 function setSearch(value: string) {
-  router.push({ query: { ...route.query, search: value || undefined } })
+  router.push({ query: { ...route.query, search: value || undefined, page: undefined } })
 }
 
 function setCategory(id: number | undefined) {
-  router.push({ query: { ...route.query, categoryId: id } })
+  router.push({ query: { ...route.query, categoryId: id, page: undefined } })
 }
 
 function setSort(value: string) {
-  router.push({ query: { ...route.query, sort: value || undefined } })
+  router.push({ query: { ...route.query, sort: value || undefined, page: undefined } })
 }
 
 function clearFilters() {
@@ -48,12 +59,24 @@ const searchInput = ref(String(route.query.search ?? ''))
 const debouncedSetSearch = useDebounceFn(setSearch, 400)
 
 watch(searchInput, (value) => debouncedSetSearch(value))
+watch(() => route.query.search, (val) => {
+  searchInput.value = String(val ?? '')
+})
 
 useSeoMeta({ title: 'Catálogo de productos' })
 </script>
 
 <template>
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <!-- Breadcrumb -->
+    <AppBreadcrumb
+      class="mb-4"
+      :items="[
+        { label: 'Inicio', to: '/' },
+        { label: 'Catálogo' },
+      ]"
+    />
 
     <!-- Cabecera de la sección -->
     <div class="mb-8">
@@ -160,7 +183,19 @@ useSeoMeta({ title: 'Catálogo de productos' })
     </div>
 
     <!-- Grid -->
-    <ProductGrid v-else-if="products.length" :products="products" />
+    <template v-else-if="products.length">
+      <ProductGrid :products="products" />
+
+      <!-- Paginación -->
+      <AppPagination
+        v-if="totalPages > 1"
+        :page="currentPage"
+        :total-pages="totalPages"
+        :total="total"
+        :per-page="PER_PAGE"
+        @change="setPage"
+      />
+    </template>
 
     <!-- Sin resultados -->
     <div v-else class="py-20 text-center">

@@ -43,4 +43,8 @@ export const ProductService = {
 
     return product
   },
+
+  async getRelatedProducts(slug: string, limit = 4): Promise<Product[]> {
+    return productRepository.findRelated(slug, limit)
+  },
 }

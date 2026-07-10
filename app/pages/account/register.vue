@@ -10,9 +10,12 @@
  * - Aceptación de términos (requerido)
  */
 
+import { validateRegisterPayload, validateBirthDate } from '~~/shared/validation/form.validation'
+
 definePageMeta({ middleware: 'guest' })
 
 const { register } = useAuth()
+const { FIELD_LIMITS, limitPersonName, limitText } = useFormFields()
 
 const form = reactive({
   civility: '',        // 1 = Sr., 2 = Sra. (id_gender en PS8)
@@ -25,6 +28,10 @@ const form = reactive({
   partnerOffers: false,
   acceptTerms: false,
 })
+
+const today = new Date()
+const maxBirthDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate()).toISOString().slice(0, 10)
+const minBirthDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().slice(0, 10)
 
 const showPassword = ref(false)
 const isLoading = ref(false)
@@ -56,8 +63,20 @@ async function handleSubmit() {
     errorMessage.value = 'Debes aceptar los términos y condiciones para continuar.'
     return
   }
-  if (form.password.length < 8) {
-    errorMessage.value = 'La contraseña debe tener al menos 8 caracteres.'
+
+  const validationError = validateRegisterPayload({
+    civility: form.civility,
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    email: form.email.trim(),
+    password: form.password,
+    birthDate: form.birthDate || undefined,
+    newsletter: form.newsletter,
+    partnerOffers: form.partnerOffers,
+  })
+
+  if (validationError) {
+    errorMessage.value = validationError
     return
   }
 
@@ -139,6 +158,8 @@ useSeoMeta({ title: 'Crear cuenta' })
                 required
                 placeholder="María"
                 class="input"
+                :maxlength="FIELD_LIMITS.firstName"
+                @input="form.firstName = limitPersonName(form.firstName, FIELD_LIMITS.firstName)"
               />
             </div>
             <div>
@@ -153,6 +174,8 @@ useSeoMeta({ title: 'Crear cuenta' })
                 required
                 placeholder="González"
                 class="input"
+                :maxlength="FIELD_LIMITS.lastName"
+                @input="form.lastName = limitPersonName(form.lastName, FIELD_LIMITS.lastName)"
               />
             </div>
           </div>
@@ -170,6 +193,8 @@ useSeoMeta({ title: 'Crear cuenta' })
               required
               placeholder="tu@email.com"
               class="input"
+              :maxlength="FIELD_LIMITS.email"
+              @input="form.email = limitText(form.email, FIELD_LIMITS.email)"
             />
           </div>
 
@@ -186,7 +211,8 @@ useSeoMeta({ title: 'Crear cuenta' })
                 autocomplete="new-password"
                 required
                 minlength="8"
-                placeholder="Mínimo 8 caracteres"
+                :maxlength="FIELD_LIMITS.passwordMax"
+                placeholder="Entre 8 y 32 caracteres"
                 class="input pr-10"
               />
               <button
@@ -231,6 +257,8 @@ useSeoMeta({ title: 'Crear cuenta' })
               v-model="form.birthDate"
               type="date"
               autocomplete="bday"
+              :max="maxBirthDate"
+              :min="minBirthDate"
               class="input"
             />
           </div>

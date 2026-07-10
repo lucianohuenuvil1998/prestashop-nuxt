@@ -44,12 +44,29 @@ export interface UpdateCartItemPayload {
   quantity: number
 }
 
+export interface GuestAddressPayload {
+  firstName: string
+  lastName: string
+  company?: string
+  address1: string
+  address2?: string
+  city: string
+  state?: string
+  postcode: string
+  country: string
+  phone?: string
+}
+
 export interface PlaceOrderPayload {
   cartId: string
-  shippingAddressId: number
-  billingAddressId: number
   shippingMethodId: number
   paymentMethodId: string
+  /** Para usuarios autenticados */
+  shippingAddressId?: number
+  billingAddressId?: number
+  /** Para invitados */
+  guestEmail?: string
+  guestAddress?: GuestAddressPayload
 }
 
 export interface PlaceOrderCustomer {

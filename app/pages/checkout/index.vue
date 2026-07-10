@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: false, middleware: 'auth' })
+definePageMeta({ layout: false })
 
 const { init: initCart } = useCart()
 await initCart()
@@ -11,6 +11,8 @@ const {
   nextStep,
   prevStep,
   goToStep,
+  isGuest,
+  guestEmail,
   address,
   savedAddresses,
   loadingAddresses,
@@ -31,6 +33,8 @@ const {
   isEmpty,
   placeOrder,
 } = useCheckout()
+
+const { FIELD_LIMITS, limitPersonName, limitPhone, limitPostcode, limitText } = useFormFields()
 
 const steps = [
   { id: 1, label: 'Dirección' },
@@ -166,13 +170,31 @@ function formatAddressLine(addr: { firstName: string, lastName: string, address1
 
             <!-- Paso 1: selector y formulario -->
             <div v-if="step === 1" class="px-6 pb-6 border-t border-gray-100">
-              <div v-if="loadingAddresses" class="py-6 text-center text-gray-400 text-sm">
+
+              <!-- Banner para invitado: sugerencia de login -->
+              <div v-if="isGuest" class="mt-4 rounded-lg bg-indigo-50 border border-indigo-200 px-4 py-3 flex items-start gap-3">
+                <svg class="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="text-sm">
+                  <p class="font-medium text-indigo-800">Comprando como invitado</p>
+                  <p class="text-indigo-600 mt-0.5">
+                    ¿Ya tienes cuenta?
+                    <NuxtLink to="/account/login?redirect=/checkout" class="underline font-medium hover:text-indigo-800">
+                      Inicia sesión
+                    </NuxtLink>
+                    para usar tus direcciones guardadas.
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="loadingAddresses && !isGuest" class="py-6 text-center text-gray-400 text-sm">
                 Cargando direcciones...
               </div>
 
               <template v-else>
-                <!-- Direcciones guardadas -->
-                <div v-if="savedAddresses?.length" class="mt-4 space-y-3">
+                <!-- Direcciones guardadas (solo usuarios con cuenta) -->
+                <div v-if="!isGuest && savedAddresses?.length" class="mt-4 space-y-3">
                   <p class="text-sm font-medium text-gray-700">Selecciona una dirección de entrega</p>
 
                   <label
@@ -212,47 +234,124 @@ function formatAddressLine(addr: { firstName: string, lastName: string, address1
                   </button>
                 </div>
 
-                <!-- Formulario manual (sin direcciones o nueva dirección) -->
-                <div v-if="!savedAddresses?.length || useNewAddress" class="grid grid-cols-1 sm:grid-cols-2 gap-4" :class="savedAddresses?.length ? 'mt-6' : 'mt-4'">
+                <!-- Email de contacto (solo invitados) -->
+                <div v-if="isGuest" class="mt-4">
+                  <label class="checkout-label">
+                    Correo de contacto <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="guestEmail"
+                    type="email"
+                    inputmode="email"
+                    class="checkout-input"
+                    placeholder="tu@correo.com"
+                    :maxlength="FIELD_LIMITS.email"
+                    autocomplete="email"
+                  />
+                  <p class="mt-1 text-xs text-gray-400">Te enviaremos la confirmación del pedido a este correo.</p>
+                </div>
+
+                <!-- Formulario manual (sin direcciones, nueva dirección o invitado) -->
+                <div
+                  v-if="isGuest || !savedAddresses?.length || useNewAddress"
+                  class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  :class="(savedAddresses?.length || isGuest) ? 'mt-4' : 'mt-4'"
+                >
                 <!-- Nombre -->
                 <div>
                   <label class="checkout-label">Nombre <span class="text-red-500">*</span></label>
-                  <input v-model="address.firstName" type="text" class="checkout-input" placeholder="Juan" />
+                  <input
+                    v-model="address.firstName"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="Juan"
+                    :maxlength="FIELD_LIMITS.firstName"
+                    @input="address.firstName = limitPersonName(address.firstName, FIELD_LIMITS.firstName)"
+                  />
                 </div>
                 <!-- Apellido -->
                 <div>
                   <label class="checkout-label">Apellido <span class="text-red-500">*</span></label>
-                  <input v-model="address.lastName" type="text" class="checkout-input" placeholder="García" />
+                  <input
+                    v-model="address.lastName"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="García"
+                    :maxlength="FIELD_LIMITS.lastName"
+                    @input="address.lastName = limitPersonName(address.lastName, FIELD_LIMITS.lastName)"
+                  />
                 </div>
                 <!-- Empresa -->
                 <div class="sm:col-span-2">
                   <label class="checkout-label">Empresa <span class="text-gray-400 font-normal">(opcional)</span></label>
-                  <input v-model="address.company" type="text" class="checkout-input" placeholder="Mi empresa S.A." />
+                  <input
+                    v-model="address.company"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="Mi empresa S.A."
+                    :maxlength="FIELD_LIMITS.company"
+                    @input="address.company = limitText(address.company ?? '', FIELD_LIMITS.company)"
+                  />
                 </div>
                 <!-- Dirección -->
                 <div class="sm:col-span-2">
                   <label class="checkout-label">Dirección <span class="text-red-500">*</span></label>
-                  <input v-model="address.address1" type="text" class="checkout-input" placeholder="Av. Corrientes 1234" />
+                  <input
+                    v-model="address.address1"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="Av. Corrientes 1234"
+                    :maxlength="FIELD_LIMITS.address1"
+                    @input="address.address1 = limitText(address.address1, FIELD_LIMITS.address1)"
+                  />
                 </div>
                 <!-- Dirección 2 -->
                 <div class="sm:col-span-2">
                   <label class="checkout-label">Piso / Depto <span class="text-gray-400 font-normal">(opcional)</span></label>
-                  <input v-model="address.address2" type="text" class="checkout-input" placeholder="3° B" />
+                  <input
+                    v-model="address.address2"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="3° B"
+                    :maxlength="FIELD_LIMITS.address2"
+                    @input="address.address2 = limitText(address.address2 ?? '', FIELD_LIMITS.address2)"
+                  />
                 </div>
                 <!-- Ciudad -->
                 <div>
                   <label class="checkout-label">Ciudad <span class="text-red-500">*</span></label>
-                  <input v-model="address.city" type="text" class="checkout-input" placeholder="Buenos Aires" />
+                  <input
+                    v-model="address.city"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="Buenos Aires"
+                    :maxlength="FIELD_LIMITS.city"
+                    @input="address.city = limitText(address.city, FIELD_LIMITS.city)"
+                  />
                 </div>
                 <!-- Provincia -->
                 <div>
                   <label class="checkout-label">Provincia</label>
-                  <input v-model="address.state" type="text" class="checkout-input" placeholder="Buenos Aires" />
+                  <input
+                    v-model="address.state"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="Buenos Aires"
+                    :maxlength="FIELD_LIMITS.state"
+                    @input="address.state = limitText(address.state ?? '', FIELD_LIMITS.state)"
+                  />
                 </div>
                 <!-- CP -->
                 <div>
                   <label class="checkout-label">Código postal <span class="text-red-500">*</span></label>
-                  <input v-model="address.postcode" type="text" class="checkout-input" placeholder="C1043" />
+                  <input
+                    v-model="address.postcode"
+                    type="text"
+                    class="checkout-input"
+                    placeholder="C1043"
+                    :maxlength="FIELD_LIMITS.postcode"
+                    @input="address.postcode = limitPostcode(address.postcode)"
+                  />
                 </div>
                 <!-- País -->
                 <div>
@@ -272,7 +371,15 @@ function formatAddressLine(addr: { firstName: string, lastName: string, address1
                 <!-- Teléfono -->
                 <div class="sm:col-span-2">
                   <label class="checkout-label">Teléfono</label>
-                  <input v-model="address.phone" type="tel" class="checkout-input" placeholder="+54 11 1234-5678" />
+                  <input
+                    v-model="address.phone"
+                    type="tel"
+                    inputmode="tel"
+                    class="checkout-input"
+                    placeholder="+54 11 1234-5678"
+                    :maxlength="FIELD_LIMITS.phone"
+                    @input="address.phone = limitPhone(address.phone ?? '')"
+                  />
                 </div>
                 </div>
               </template>
@@ -435,8 +542,8 @@ function formatAddressLine(addr: { firstName: string, lastName: string, address1
               <!-- Aviso legal tipo PS8 -->
               <p class="mt-4 text-xs text-gray-500 leading-relaxed">
                 Al confirmar el pedido, aceptas nuestros
-                <a href="#" class="text-indigo-600 hover:underline">Términos y condiciones</a>
-                y la <a href="#" class="text-indigo-600 hover:underline">Política de privacidad</a>.
+                <NuxtLink to="/legal/terms" target="_blank" class="text-indigo-600 hover:underline">Términos y condiciones</NuxtLink>
+                y la <NuxtLink to="/legal/privacy" target="_blank" class="text-indigo-600 hover:underline">Política de privacidad</NuxtLink>.
               </p>
 
               <p v-if="stepError" class="mt-3 text-sm text-red-600 flex items-center gap-1.5">

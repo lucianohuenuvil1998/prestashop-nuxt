@@ -7,9 +7,12 @@
  * - Mensaje
  */
 
+import { validateContactPayload } from '~~/shared/validation/form.validation'
+
 const { customer, isAuthenticated } = useAuth()
 const { subjects, loadingSubjects, submitMessage } = useContact()
 const { formatOrderDate } = useOrders()
+const { FIELD_LIMITS, limitText } = useFormFields()
 
 const form = reactive({
   subjectId: '' as string | number,
@@ -46,8 +49,15 @@ async function handleSubmit() {
   errorMessage.value = ''
   isSuccess.value = false
 
-  if (!form.subjectId) {
-    errorMessage.value = 'Selecciona un asunto.'
+  const validationError = validateContactPayload({
+    subjectId: Number(form.subjectId),
+    email: form.email.trim(),
+    orderReference: form.orderReference || undefined,
+    message: form.message.trim(),
+  })
+
+  if (validationError) {
+    errorMessage.value = validationError
     return
   }
 
@@ -210,7 +220,9 @@ useSeoMeta({
                 required
                 placeholder="tu@email.com"
                 class="input"
+                :maxlength="FIELD_LIMITS.email"
                 :readonly="isAuthenticated"
+                @input="form.email = limitText(form.email, FIELD_LIMITS.email)"
               />
               <p v-if="isAuthenticated" class="mt-1 text-xs text-gray-400">
                 Usando el email de tu cuenta.
@@ -245,6 +257,8 @@ useSeoMeta({
                 type="text"
                 placeholder="Ej.: DEMO-XK7P2M9A"
                 class="input"
+                :maxlength="FIELD_LIMITS.orderReference"
+                @input="form.orderReference = limitText(form.orderReference, FIELD_LIMITS.orderReference)"
               />
               <p class="mt-1 text-xs text-gray-400">
                 Si tu consulta está relacionada con un pedido, indica su referencia.
@@ -261,11 +275,13 @@ useSeoMeta({
                 v-model="form.message"
                 required
                 rows="6"
-                minlength="10"
+                :minlength="FIELD_LIMITS.messageMin"
+                :maxlength="FIELD_LIMITS.messageMax"
                 placeholder="Escribe tu consulta aquí..."
                 class="input resize-y min-h-[140px]"
+                @input="form.message = limitText(form.message, FIELD_LIMITS.messageMax)"
               />
-              <p class="mt-1 text-xs text-gray-400">Mínimo 10 caracteres.</p>
+              <p class="mt-1 text-xs text-gray-400">Entre {{ FIELD_LIMITS.messageMin }} y {{ FIELD_LIMITS.messageMax }} caracteres.</p>
             </div>
 
             <!-- Submit -->

@@ -9,8 +9,7 @@ import type { ContactSubject, ContactFormPayload, ContactMessage } from '~~/shar
 import { createError } from 'h3'
 import { MOCK_CONTACT_SUBJECTS } from '../repositories/mock/contact-subjects.data'
 import { mockContactStore } from '../repositories/mock/mock-contact.store'
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import { validateContactPayload } from '~~/shared/validation/form.validation'
 
 export const ContactService = {
   async getSubjects(): Promise<ContactSubject[]> {
@@ -18,19 +17,12 @@ export const ContactService = {
   },
 
   async submitMessage(payload: ContactFormPayload): Promise<ContactMessage> {
-    if (!payload.subjectId || !payload.email?.trim() || !payload.message?.trim()) {
-      throw createError({ statusCode: 400, statusMessage: 'Faltan campos obligatorios' })
+    const validationError = validateContactPayload(payload)
+    if (validationError) {
+      throw createError({ statusCode: 400, statusMessage: validationError })
     }
 
     const email = payload.email.trim().toLowerCase()
-
-    if (!EMAIL_REGEX.test(email)) {
-      throw createError({ statusCode: 400, statusMessage: 'El email no es válido' })
-    }
-
-    if (payload.message.trim().length < 10) {
-      throw createError({ statusCode: 400, statusMessage: 'El mensaje debe tener al menos 10 caracteres' })
-    }
 
     const subject = MOCK_CONTACT_SUBJECTS.find((s) => s.id === payload.subjectId)
 

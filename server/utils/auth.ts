@@ -28,3 +28,10 @@ export function getAuthTokenOrThrow(event: H3Event): string {
 
   return token
 }
+
+/** Devuelve el cliente autenticado si hay sesión, o null si es invitado. */
+export function getOptionalCustomer(event: H3Event): Customer | null {
+  const token = getAuthToken(event)
+  if (!token) return null
+  return mockAuthStore.getByToken(token) ?? null
+}

@@ -28,6 +28,14 @@ interface StoredCustomer {
 const customersByEmail = new Map<string, StoredCustomer>()
 const customersByToken = new Map<string, StoredCustomer>()
 
+interface ResetToken {
+  email: string
+  expiresAt: number
+}
+const resetTokens = new Map<string, ResetToken>()
+
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000 // 30 minutos
+
 let nextId = 2
 let nextAddressId = 2
 
@@ -225,6 +233,35 @@ export const mockAuthStore = {
     }
 
     stored.password = payload.newPassword
+  },
+
+  /** Genera un token de reseteo si el email existe. Devuelve el token (en prod se enviaría por email). */
+  createResetToken(email: string): string | null {
+    const stored = customersByEmail.get(email.toLowerCase().trim())
+    if (!stored) return null
+
+    const token = `reset-${crypto.randomUUID()}`
+    resetTokens.set(token, { email: stored.email, expiresAt: Date.now() + RESET_TOKEN_TTL_MS })
+    return token
+  },
+
+  /** Valida el token y actualiza la contraseña. Invalida el token al usarlo. */
+  resetPassword(token: string, newPassword: string): boolean {
+    const entry = resetTokens.get(token)
+    if (!entry || Date.now() > entry.expiresAt) return false
+
+    const stored = customersByEmail.get(entry.email)
+    if (!stored) return false
+
+    stored.password = newPassword
+    resetTokens.delete(token)
+    return true
+  },
+
+  /** Verifica si un token de reseteo es válido (sin consumirlo). */
+  isResetTokenValid(token: string): boolean {
+    const entry = resetTokens.get(token)
+    return !!entry && Date.now() <= entry.expiresAt
   },
 
   getAddresses(token: string): Address[] {

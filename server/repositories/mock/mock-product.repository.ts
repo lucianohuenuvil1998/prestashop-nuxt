@@ -31,6 +31,21 @@ export class MockProductRepository implements IProductRepository {
     return MOCK_PRODUCTS.find((p) => p.slug === slug) ?? null
   }
 
+  async findRelated(slug: string, limit = 4): Promise<Product[]> {
+    const current = MOCK_PRODUCTS.find((p) => p.slug === slug)
+    if (!current) return []
+
+    const categoryIds = new Set(current.categories.map((c) => c.id))
+
+    return MOCK_PRODUCTS
+      .filter(
+        (p) => p.slug !== slug
+          && p.isAvailable
+          && p.categories.some((c) => categoryIds.has(c.id)),
+      )
+      .slice(0, limit)
+  }
+
   // ─── Filtros privados ─────────────────────────────────────────────────────
 
   private applySearch(products: Product[], search?: string): Product[] {

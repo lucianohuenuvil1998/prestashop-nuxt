@@ -9,13 +9,16 @@ import type { CustomerProfile, UpdateProfilePayload, UpdatePasswordPayload, Addr
 import type { Address } from '~~/shared/types/order.types'
 import { createError } from 'h3'
 import { mockAuthStore } from '../repositories/mock/mock-auth.store'
+import {
+  validateAddressInput,
+  validatePassword,
+  validateProfilePayload,
+} from '~~/shared/validation/form.validation'
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function validateAddressInput(input: AddressInput): void {
-  if (!input.alias?.trim() || !input.firstName?.trim() || !input.lastName?.trim()
-    || !input.address1?.trim() || !input.city?.trim() || !input.postcode?.trim() || !input.country?.trim()) {
-    throw createError({ statusCode: 400, statusMessage: 'Faltan campos obligatorios' })
+function validateAddressInputOrThrow(input: AddressInput): void {
+  const error = validateAddressInput(input)
+  if (error) {
+    throw createError({ statusCode: 400, statusMessage: error })
   }
 }
 
@@ -37,12 +40,9 @@ export const CustomerService = {
   },
 
   async updateProfile(token: string, payload: UpdateProfilePayload): Promise<CustomerProfile> {
-    if (!payload.firstName?.trim() || !payload.lastName?.trim() || !payload.email?.trim()) {
-      throw createError({ statusCode: 400, statusMessage: 'Faltan campos obligatorios' })
-    }
-
-    if (!EMAIL_REGEX.test(payload.email.trim())) {
-      throw createError({ statusCode: 400, statusMessage: 'El email no es válido' })
+    const validationError = validateProfilePayload(payload)
+    if (validationError) {
+      throw createError({ statusCode: 400, statusMessage: validationError })
     }
 
     try {
@@ -64,12 +64,13 @@ export const CustomerService = {
   },
 
   async updatePassword(token: string, payload: UpdatePasswordPayload): Promise<void> {
-    if (!payload.currentPassword || !payload.newPassword) {
-      throw createError({ statusCode: 400, statusMessage: 'Faltan campos de contraseña' })
+    if (!payload.currentPassword) {
+      throw createError({ statusCode: 400, statusMessage: 'La contraseña actual es requerida' })
     }
 
-    if (payload.newPassword.length < 8) {
-      throw createError({ statusCode: 400, statusMessage: 'La nueva contraseña debe tener al menos 8 caracteres' })
+    const passwordError = validatePassword(payload.newPassword, 'La nueva contraseña')
+    if (passwordError) {
+      throw createError({ statusCode: 400, statusMessage: passwordError })
     }
 
     try {
@@ -86,7 +87,7 @@ export const CustomerService = {
   },
 
   async createAddress(token: string, payload: AddressInput): Promise<Address> {
-    validateAddressInput(payload)
+    validateAddressInputOrThrow(payload)
     try {
       return mockAuthStore.addAddress(token, payload)
     }
@@ -96,7 +97,7 @@ export const CustomerService = {
   },
 
   async updateAddress(token: string, addressId: number, payload: AddressInput): Promise<Address> {
-    validateAddressInput(payload)
+    validateAddressInputOrThrow(payload)
     try {
       return mockAuthStore.updateAddress(token, addressId, payload)
     }

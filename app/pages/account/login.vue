@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { validateEmail } from '~~/shared/validation/form.validation'
+
 definePageMeta({ middleware: 'guest' })
 
 const { login } = useAuth()
+const { FIELD_LIMITS, limitText } = useFormFields()
 
 const form = reactive({ email: '', password: '' })
 const showPassword = ref(false)
@@ -10,6 +13,18 @@ const errorMessage = ref('')
 
 async function handleSubmit() {
   errorMessage.value = ''
+
+  const emailError = validateEmail(form.email.trim())
+  if (emailError) {
+    errorMessage.value = emailError
+    return
+  }
+
+  if (!form.password) {
+    errorMessage.value = 'La contraseña es requerida.'
+    return
+  }
+
   isLoading.value = true
   try {
     await login({ email: form.email, password: form.password })
@@ -38,14 +53,6 @@ useSeoMeta({ title: 'Iniciar sesión' })
           <p class="mt-1 text-sm text-gray-500">Accede a tu cuenta</p>
         </div>
 
-        <!-- Error -->
-        <div
-          v-if="errorMessage"
-          class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {{ errorMessage }}
-        </div>
-
         <form class="space-y-4" @submit.prevent="handleSubmit">
           <!-- Email -->
           <div>
@@ -60,6 +67,8 @@ useSeoMeta({ title: 'Iniciar sesión' })
               required
               placeholder="tu@email.com"
               class="input"
+              :maxlength="FIELD_LIMITS.email"
+              @input="form.email = limitText(form.email, FIELD_LIMITS.email)"
             />
           </div>
 
@@ -69,12 +78,12 @@ useSeoMeta({ title: 'Iniciar sesión' })
               <label for="password" class="block text-sm font-medium text-gray-700">
                 Contraseña
               </label>
-              <button
-                type="button"
+              <NuxtLink
+                to="/account/forgot-password"
                 class="text-xs text-indigo-600 hover:text-indigo-500 transition-colors"
               >
                 ¿Olvidaste tu contraseña?
-              </button>
+              </NuxtLink>
             </div>
             <div class="relative">
               <input
@@ -85,6 +94,7 @@ useSeoMeta({ title: 'Iniciar sesión' })
                 required
                 placeholder="••••••••"
                 class="input pr-10"
+                :maxlength="FIELD_LIMITS.passwordMax"
               />
               <button
                 type="button"
@@ -111,6 +121,11 @@ useSeoMeta({ title: 'Iniciar sesión' })
             <span v-if="isLoading">Iniciando sesión...</span>
             <span v-else>Iniciar sesión</span>
           </button>
+
+          <!-- Error inline -->
+          <p v-if="errorMessage" class="text-center text-sm text-red-500">
+            {{ errorMessage }}
+          </p>
         </form>
 
         <!-- Hint de desarrollo -->

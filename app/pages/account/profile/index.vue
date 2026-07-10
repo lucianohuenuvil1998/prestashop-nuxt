@@ -4,9 +4,12 @@
  * Dos bloques: identidad + contraseña.
  */
 
+import { validatePassword, validateProfilePayload, validateBirthDate } from '~~/shared/validation/form.validation'
+
 definePageMeta({ middleware: 'auth' })
 
 const { fetchProfile, updateProfile, updatePassword } = useProfile()
+const { FIELD_LIMITS, limitPersonName, limitText } = useFormFields()
 
 const { data: profile, pending, refresh } = fetchProfile()
 
@@ -25,6 +28,10 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: '',
 })
+
+const today = new Date()
+const maxBirthDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate()).toISOString().slice(0, 10)
+const minBirthDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().slice(0, 10)
 
 const isSavingIdentity = ref(false)
 const isSavingPassword = ref(false)
@@ -49,6 +56,28 @@ watch(profile, (p) => {
 async function handleIdentitySubmit() {
   identityError.value = ''
   identitySuccess.value = false
+
+  const birthDateError = validateBirthDate(identityForm.birthDate)
+  if (birthDateError) {
+    identityError.value = birthDateError
+    return
+  }
+
+  const validationError = validateProfilePayload({
+    civility: identityForm.civility,
+    firstName: identityForm.firstName.trim(),
+    lastName: identityForm.lastName.trim(),
+    email: identityForm.email.trim(),
+    birthDate: identityForm.birthDate || undefined,
+    newsletter: identityForm.newsletter,
+    partnerOffers: identityForm.partnerOffers,
+  })
+
+  if (validationError) {
+    identityError.value = validationError
+    return
+  }
+
   isSavingIdentity.value = true
 
   try {
@@ -76,6 +105,17 @@ async function handleIdentitySubmit() {
 async function handlePasswordSubmit() {
   passwordError.value = ''
   passwordSuccess.value = false
+
+  if (!passwordForm.currentPassword) {
+    passwordError.value = 'La contraseña actual es requerida.'
+    return
+  }
+
+  const passwordValidation = validatePassword(passwordForm.newPassword, 'La nueva contraseña')
+  if (passwordValidation) {
+    passwordError.value = passwordValidation
+    return
+  }
 
   if (passwordForm.newPassword !== passwordForm.confirmPassword) {
     passwordError.value = 'Las contraseñas nuevas no coinciden.'
@@ -171,13 +211,29 @@ useSeoMeta({ title: 'Mis datos personales' })
                 <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1">
                   Nombre <span class="text-red-500">*</span>
                 </label>
-                <input id="firstName" v-model="identityForm.firstName" type="text" required class="input" />
+                <input
+                  id="firstName"
+                  v-model="identityForm.firstName"
+                  type="text"
+                  required
+                  class="input"
+                  :maxlength="FIELD_LIMITS.firstName"
+                  @input="identityForm.firstName = limitPersonName(identityForm.firstName, FIELD_LIMITS.firstName)"
+                />
               </div>
               <div>
                 <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1">
                   Apellidos <span class="text-red-500">*</span>
                 </label>
-                <input id="lastName" v-model="identityForm.lastName" type="text" required class="input" />
+                <input
+                  id="lastName"
+                  v-model="identityForm.lastName"
+                  type="text"
+                  required
+                  class="input"
+                  :maxlength="FIELD_LIMITS.lastName"
+                  @input="identityForm.lastName = limitPersonName(identityForm.lastName, FIELD_LIMITS.lastName)"
+                />
               </div>
             </div>
 
@@ -186,7 +242,15 @@ useSeoMeta({ title: 'Mis datos personales' })
               <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
                 Correo electrónico <span class="text-red-500">*</span>
               </label>
-              <input id="email" v-model="identityForm.email" type="email" required class="input" />
+              <input
+                id="email"
+                v-model="identityForm.email"
+                type="email"
+                required
+                class="input"
+                :maxlength="FIELD_LIMITS.email"
+                @input="identityForm.email = limitText(identityForm.email, FIELD_LIMITS.email)"
+              />
             </div>
 
             <!-- Fecha de nacimiento -->
@@ -195,7 +259,14 @@ useSeoMeta({ title: 'Mis datos personales' })
                 Fecha de nacimiento
                 <span class="text-gray-400 font-normal">(opcional)</span>
               </label>
-              <input id="birthDate" v-model="identityForm.birthDate" type="date" class="input" />
+              <input
+                id="birthDate"
+                v-model="identityForm.birthDate"
+                type="date"
+                :max="maxBirthDate"
+                :min="minBirthDate"
+                class="input"
+              />
             </div>
 
             <!-- Preferencias -->
@@ -280,6 +351,7 @@ useSeoMeta({ title: 'Mis datos personales' })
                   :type="showNewPassword ? 'text' : 'password'"
                   autocomplete="new-password"
                   minlength="8"
+                  :maxlength="FIELD_LIMITS.passwordMax"
                   class="input pr-10"
                 />
                 <button
@@ -296,7 +368,7 @@ useSeoMeta({ title: 'Mis datos personales' })
                   </svg>
                 </button>
               </div>
-              <p class="mt-1 text-xs text-gray-400">Mínimo 8 caracteres.</p>
+              <p class="mt-1 text-xs text-gray-400">Entre 8 y 32 caracteres.</p>
             </div>
 
             <div>
@@ -308,6 +380,7 @@ useSeoMeta({ title: 'Mis datos personales' })
                 v-model="passwordForm.confirmPassword"
                 type="password"
                 autocomplete="new-password"
+                :maxlength="FIELD_LIMITS.passwordMax"
                 class="input"
               />
             </div>

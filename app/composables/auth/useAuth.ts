@@ -8,7 +8,17 @@ export function useAuth() {
   async function login(credentials: LoginCredentials): Promise<void> {
     const session = await $fetch<Pick<Customer, 'id' | 'email' | 'firstName' | 'lastName'>>(
       '/api/auth/login',
-      { method: 'POST', body: credentials },
+      {
+        method: 'POST',
+        body: credentials,
+        onResponseError({ response }) {
+          throw new Error(
+            response._data?.statusMessage
+              ?? response._data?.message
+              ?? 'Credenciales incorrectas',
+          )
+        },
+      },
     )
     store.setSession(session)
   }
@@ -16,7 +26,17 @@ export function useAuth() {
   async function register(payload: RegisterPayload): Promise<void> {
     const session = await $fetch<Pick<Customer, 'id' | 'email' | 'firstName' | 'lastName'>>(
       '/api/auth/register',
-      { method: 'POST', body: payload },
+      {
+        method: 'POST',
+        body: payload,
+        onResponseError({ response }) {
+          throw new Error(
+            response._data?.statusMessage
+              ?? response._data?.message
+              ?? 'No se pudo crear la cuenta',
+          )
+        },
+      },
     )
     store.setSession(session)
   }
