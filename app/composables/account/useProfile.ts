@@ -4,9 +4,11 @@
 
 import type { CustomerProfile, UpdateProfilePayload, UpdatePasswordPayload } from '~~/shared/types/customer.types'
 import { useAuthStore } from '../../stores/auth.store'
+import { useUiStore } from '../../stores/ui.store'
 
 export function useProfile() {
   const authStore = useAuthStore()
+  const uiStore = useUiStore()
 
   function fetchProfile() {
     return useAsyncData<CustomerProfile>('account-profile', () =>
@@ -27,6 +29,7 @@ export function useProfile() {
       lastName: profile.lastName,
     })
 
+    uiStore.addToast('Datos personales actualizados', 'success')
     return profile
   }
 
@@ -35,6 +38,7 @@ export function useProfile() {
       method: 'PUT',
       body: payload,
     })
+    uiStore.addToast('Contraseña actualizada correctamente', 'success')
   }
 
   return {

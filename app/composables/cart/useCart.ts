@@ -33,6 +33,7 @@ export function useCart() {
     })
     cartStore.setCart(cart)
     uiStore.openCartDrawer()
+    uiStore.addToast('Producto agregado al carrito', 'success')
   }
 
   async function removeItem(itemId: number): Promise<void> {
@@ -40,6 +41,7 @@ export function useCart() {
       method: 'DELETE',
     })
     cartStore.setCart(cart)
+    uiStore.addToast('Producto eliminado del carrito', 'info')
   }
 
   async function updateQuantity(itemId: number, quantity: number): Promise<void> {

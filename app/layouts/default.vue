@@ -12,6 +12,8 @@ onMounted(init)
       <slot />
     </main>
 
+    <AppToasts />
+
     <footer class="border-t border-gray-200 mt-16">
 
       <!-- Trust badges -->

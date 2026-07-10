@@ -2,29 +2,40 @@
 import type { Product } from '~~/shared/types/product.types'
 import { formatPrice, formatDiscount } from '../../utils/currency'
 
-const props = defineProps<{
-  product: Product
-}>()
+const props = defineProps<{ product: Product }>()
 
 const image = computed(() => props.product.images[0] ?? null)
 const category = computed(() => props.product.categories[0] ?? null)
+const hasDiscount = computed(() => props.product.regularPrice > props.product.price)
+const discountLabel = computed(() => formatDiscount(props.product.regularPrice, props.product.price))
+const hasVariants = computed(() => props.product.variants.length > 0)
 
-const hasDiscount = computed(
-  () => props.product.regularPrice > props.product.price,
-)
+const { addItem } = useCart()
+const isAdding = ref(false)
+const added = ref(false)
 
-const discountLabel = computed(() =>
-  formatDiscount(props.product.regularPrice, props.product.price),
-)
+async function handleAddToCart(e: MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  if (!props.product.stock.isInStock || isAdding.value) return
+
+  isAdding.value = true
+  try {
+    await addItem({ productId: props.product.id, quantity: 1 })
+    added.value = true
+    setTimeout(() => { added.value = false }, 2000)
+  }
+  finally {
+    isAdding.value = false
+  }
+}
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/product/${product.slug}`"
-    class="card group flex flex-col overflow-hidden hover:shadow-md transition-shadow duration-200"
-  >
-    <!-- Imagen -->
-    <div class="relative aspect-square overflow-hidden bg-gray-50">
+  <div class="card group flex flex-col overflow-hidden hover:shadow-md transition-shadow duration-200 relative">
+
+    <!-- Zona de imagen → navega al producto -->
+    <NuxtLink :to="`/product/${product.slug}`" class="block relative aspect-square overflow-hidden bg-gray-50">
       <img
         v-if="image"
         :src="image.url"
@@ -52,31 +63,80 @@ const discountLabel = computed(() =>
       >
         Sin stock
       </span>
-    </div>
+    </NuxtLink>
 
     <!-- Contenido -->
     <div class="flex flex-1 flex-col p-4">
-      <span v-if="category" class="text-xs font-medium uppercase tracking-wide text-gray-400">
-        {{ category.name }}
-      </span>
-
-      <h3 class="mt-1 text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">
-        {{ product.name }}
-      </h3>
-
-      <p class="mt-1 text-xs text-gray-500 line-clamp-2 leading-relaxed">
-        {{ product.shortDescription }}
-      </p>
-
-      <!-- Precio -->
-      <div class="mt-3 flex items-baseline gap-2">
-        <span class="text-base font-bold text-gray-900">
-          {{ formatPrice(product.price, product.currency) }}
+      <NuxtLink :to="`/product/${product.slug}`" class="flex-1 min-w-0">
+        <span v-if="category" class="text-xs font-medium uppercase tracking-wide text-gray-400">
+          {{ category.name }}
         </span>
-        <span v-if="hasDiscount" class="text-sm text-gray-400 line-through">
-          {{ formatPrice(product.regularPrice, product.currency) }}
-        </span>
+
+        <h3 class="mt-1 text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">
+          {{ product.name }}
+        </h3>
+
+        <p class="mt-1 text-xs text-gray-500 line-clamp-2 leading-relaxed">
+          {{ product.shortDescription }}
+        </p>
+
+        <!-- Precio -->
+        <div class="mt-3 flex items-baseline gap-2">
+          <span class="text-base font-bold text-gray-900">
+            {{ formatPrice(product.price, product.currency) }}
+          </span>
+          <span v-if="hasDiscount" class="text-sm text-gray-400 line-through">
+            {{ formatPrice(product.regularPrice, product.currency) }}
+          </span>
+        </div>
+      </NuxtLink>
+
+      <!-- Botón agregar al carrito -->
+      <div class="mt-3">
+        <!-- Producto con variantes: ir al detalle -->
+        <NuxtLink
+          v-if="hasVariants"
+          :to="`/product/${product.slug}`"
+          class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:border-indigo-500 hover:text-indigo-600 transition-colors"
+        >
+          Seleccionar opción
+        </NuxtLink>
+
+        <!-- Sin stock -->
+        <button
+          v-else-if="!product.stock.isInStock"
+          disabled
+          class="w-full rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-400 cursor-not-allowed"
+        >
+          Sin stock
+        </button>
+
+        <!-- Agregar directo -->
+        <button
+          v-else
+          class="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all"
+          :class="added
+            ? 'bg-green-500 text-white'
+            : 'bg-indigo-600 hover:bg-indigo-700 text-white'"
+          :disabled="isAdding"
+          @click="handleAddToCart"
+        >
+          <svg v-if="isAdding" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <svg v-else-if="added" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+          </svg>
+          <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span v-if="isAdding">Agregando...</span>
+          <span v-else-if="added">¡Agregado!</span>
+          <span v-else>Agregar al carrito</span>
+        </button>
       </div>
     </div>
-  </NuxtLink>
+
+  </div>
 </template>
