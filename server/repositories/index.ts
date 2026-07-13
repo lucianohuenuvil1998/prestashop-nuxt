@@ -1,25 +1,41 @@
 /**
  * Proveedor de repositorios (composición raíz del servidor).
  *
- * Este es el único archivo que debe modificarse cuando se cambie
- * de MockProductRepository a PrestashopProductRepository (u otra implementación).
+ * Activa los repositorios de PrestaShop cuando USE_PRESTASHOP=true en .env.
+ * De lo contrario usa los mocks para desarrollo local sin PS.
  *
- * El resto del sistema (servicios, rutas) importa desde aquí y permanece
- * intacto durante cualquier sustitución de infraestructura.
- *
- * Principio: Open/Closed — el sistema está abierto a extensión (nueva
- * implementación) pero cerrado a modificación (nada más cambia).
+ * Este es el único archivo que cambia al integrar PrestaShop.
+ * El resto del sistema (servicios, rutas) no se toca.
  */
 
 import type { IProductRepository } from '../types/product.repository'
-import { MockProductRepository } from './mock/mock-product.repository'
-
 import type { ICartRepository } from '../types/cart.repository'
+import type { ICategoryRepository } from '../types/category.repository'
+
+// ─── Mocks ────────────────────────────────────────────────────────────────────
+import { MockProductRepository } from './mock/mock-product.repository'
 import { MockCartRepository } from './mock/mock-cart.repository'
+import { MockCategoryRepository } from './mock/mock-category.repository'
 
-// ─── Al integrar PrestaShop, sustituir las líneas de abajo: ──────────────────
-// import { PrestashopProductRepository } from './prestashop/prestashop-product.repository'
-// import { PrestashopCartRepository } from './prestashop/prestashop-cart.repository'
+// ─── PrestaShop ───────────────────────────────────────────────────────────────
+import { PsProductRepository } from './prestashop/ps-product.repository'
+import { PsCartRepository } from './prestashop/ps-cart.repository'
+import { PsCategoryRepository } from './prestashop/ps-category.repository'
 
-export const productRepository: IProductRepository = new MockProductRepository()
+// eslint-disable-next-line node/prefer-global/process
+const usePS = (globalThis as Record<string, unknown>).process
+  ? ((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.USE_PRESTASHOP === 'true')
+  : false
+
+export const productRepository: IProductRepository = usePS
+  ? new PsProductRepository()
+  : new MockProductRepository()
+
+// El carrito siempre usa almacenamiento en memoria (servidor Nuxt).
+// Al pagar, los items se sincronizan con PS para crear el pedido real.
+// Esto evita el problema del XML PUT de PS WS y hace las operaciones instantáneas.
 export const cartRepository: ICartRepository = new MockCartRepository()
+
+export const categoryRepository: ICategoryRepository = usePS
+  ? new PsCategoryRepository()
+  : new MockCategoryRepository()

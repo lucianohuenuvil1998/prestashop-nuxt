@@ -34,10 +34,21 @@ export interface ProductFilters {
   maxPrice?: number
 }
 
+/** Datos del producto que el cliente ya tiene y envía para evitar un round-trip a PS. */
+export interface CartProductSnapshot {
+  name: string
+  slug: string
+  image: string | null
+  price: number
+  sku: string
+}
+
 export interface AddToCartPayload {
   productId: number
   variantId?: number
   quantity: number
+  /** Si se provee, el servidor lo usa directamente sin consultar PS. */
+  snapshot?: CartProductSnapshot
 }
 
 export interface UpdateCartItemPayload {

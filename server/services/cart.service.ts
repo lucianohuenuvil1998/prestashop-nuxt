@@ -9,7 +9,7 @@
 
 import type { Cart } from '~~/shared/types/cart.types'
 import type { AddToCartPayload } from '~~/shared/types/api.types'
-import { cartRepository } from '../repositories'
+import { cartRepository, productRepository } from '../repositories'
 
 export const CartService = {
   async getCart(cartId: string): Promise<Cart | null> {
@@ -21,7 +21,25 @@ export const CartService = {
   },
 
   async addItem(cartId: string, payload: AddToCartPayload): Promise<Cart> {
-    return cartRepository.addItem(cartId, payload)
+    // Si el cliente ya envió el snapshot, lo usamos directamente (sin llamar a PS).
+    const snapshot = payload.snapshot ?? await (async () => {
+      const product = await productRepository.findById(payload.productId)
+      if (!product) throw new Error(`Producto ${payload.productId} no encontrado`)
+
+      const variant = payload.variantId
+        ? (product.variants.find(v => v.id === payload.variantId) ?? null)
+        : null
+
+      return {
+        name: product.name,
+        slug: product.slug,
+        image: product.images[0]?.url ?? null,
+        price: variant?.price ?? product.price,
+        sku: variant?.sku ?? product.sku,
+      }
+    })()
+
+    return cartRepository.addItem(cartId, payload, snapshot)
   },
 
   async removeItem(cartId: string, itemId: number): Promise<Cart> {

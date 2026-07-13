@@ -27,6 +27,10 @@ export class MockProductRepository implements IProductRepository {
     return this.paginate(results, filters.page ?? 1, filters.perPage ?? 24)
   }
 
+  async findById(id: number): Promise<Product | null> {
+    return MOCK_PRODUCTS.find((p) => p.id === id) ?? null
+  }
+
   async findBySlug(slug: string): Promise<Product | null> {
     return MOCK_PRODUCTS.find((p) => p.slug === slug) ?? null
   }

@@ -1,5 +1,5 @@
 import type { Cart } from '~~/shared/types/cart.types'
-import type { AddToCartPayload } from '~~/shared/types/api.types'
+import type { AddToCartPayload, CartProductSnapshot } from '~~/shared/types/api.types'
 import { useCartStore } from '../../stores/cart.store'
 import { useUiStore } from '../../stores/ui.store'
 
@@ -25,11 +25,11 @@ export function useCart() {
     cartStore.setCart(cart)
   }
 
-  async function addItem(payload: AddToCartPayload): Promise<void> {
+  async function addItem(payload: AddToCartPayload, snapshot?: CartProductSnapshot): Promise<void> {
     await ensureCart()
     const cart = await $fetch<Cart>('/api/cart/items', {
       method: 'POST',
-      body: payload,
+      body: { ...payload, snapshot },
     })
     cartStore.setCart(cart)
     uiStore.openCartDrawer()

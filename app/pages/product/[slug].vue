@@ -6,7 +6,7 @@ const route = useRoute()
 const slug = computed(() => String(route.params.slug))
 
 const { data: product, status } = await useProduct(slug)
-const { data: relatedProducts } = await useRelatedProducts(slug)
+const { data: relatedProducts, status: relatedStatus } = useRelatedProducts(slug)
 const { addItem } = useCart()
 
 const selectedImage = ref(0)
@@ -23,11 +23,22 @@ async function handleAddToCart() {
 
   isAddingToCart.value = true
   try {
-    await addItem({
-      productId: product.value.id,
-      variantId: selectedVariant.value?.id,
-      quantity: 1,
-    })
+    const p = product.value
+    const variant = selectedVariant.value
+    await addItem(
+      {
+        productId: p.id,
+        variantId: variant?.id,
+        quantity: 1,
+      },
+      {
+        name: p.name,
+        slug: p.slug,
+        image: p.images[selectedImage.value]?.url ?? p.images[0]?.url ?? null,
+        price: variant?.price ?? p.price,
+        sku: variant?.sku ?? p.sku,
+      },
+    )
     addedFeedback.value = true
     setTimeout(() => { addedFeedback.value = false }, 2000)
   }
@@ -268,7 +279,7 @@ useSeoMeta({
     </div>
 
     <!-- ── Productos relacionados ─────────────────────────────────────────── -->
-    <section v-if="relatedProducts?.length" class="mt-16 border-t border-gray-100 pt-12">
+    <section class="mt-16 border-t border-gray-100 pt-12">
       <div class="flex items-baseline justify-between mb-6">
         <h2 class="text-xl font-bold text-gray-900">También te puede interesar</h2>
         <NuxtLink
@@ -280,7 +291,25 @@ useSeoMeta({
         </NuxtLink>
       </div>
 
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-4 sm:gap-6">
+      <!-- Skeleton mientras cargan los relacionados -->
+      <div
+        v-if="relatedStatus === 'pending'"
+        class="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-4 sm:gap-6 animate-pulse"
+      >
+        <div v-for="n in 4" :key="n" class="card overflow-hidden">
+          <div class="aspect-square bg-gray-200" />
+          <div class="p-4 space-y-2">
+            <div class="h-3 w-1/3 rounded bg-gray-200" />
+            <div class="h-4 w-2/3 rounded bg-gray-200" />
+            <div class="h-5 w-1/4 rounded bg-gray-200 mt-3" />
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else-if="relatedProducts?.length"
+        class="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-4 sm:gap-6"
+      >
         <ProductCard
           v-for="related in relatedProducts"
           :key="related.id"

@@ -24,6 +24,7 @@ export const FIELD_LIMITS = {
   messageMin: 10,
   messageMax: 1000,
   orderReference: 16,
+  search: 100,
 } as const
 
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/

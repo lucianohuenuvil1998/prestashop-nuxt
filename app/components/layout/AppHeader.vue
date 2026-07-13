@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { FIELD_LIMITS } from '~~/shared/validation/form.validation'
+
 const { isAuthenticated, customer, logout } = useAuth()
 const { itemCount } = useCart()
 const uiStore = useUiStore()
@@ -6,19 +8,34 @@ const uiStore = useUiStore()
 const firstName = computed(() => customer.value?.firstName ?? '')
 const fullName = computed(() => customer.value ? `${customer.value.firstName} ${customer.value.lastName}` : '')
 
+const router = useRouter()
+
 const mobileMenuOpen = ref(false)
 const accountDropdownOpen = ref(false)
+const searchOpen = ref(false)
+const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
 
-function closeMobileMenu() {
-  mobileMenuOpen.value = false
+function closeMobileMenu() { mobileMenuOpen.value = false }
+function toggleAccountDropdown() { accountDropdownOpen.value = !accountDropdownOpen.value }
+function closeAccountDropdown() { accountDropdownOpen.value = false }
+
+function openSearch() {
+  searchOpen.value = true
+  nextTick(() => searchInput.value?.focus())
 }
 
-function toggleAccountDropdown() {
-  accountDropdownOpen.value = !accountDropdownOpen.value
+function closeSearch() {
+  searchOpen.value = false
+  searchQuery.value = ''
 }
 
-function closeAccountDropdown() {
-  accountDropdownOpen.value = false
+function submitSearch() {
+  const q = searchQuery.value.trim()
+  if (!q) return
+  closeSearch()
+  closeMobileMenu()
+  router.push({ path: '/catalog', query: { search: q } })
 }
 
 async function handleLogout() {
@@ -27,11 +44,12 @@ async function handleLogout() {
   await logout()
 }
 
-// Cerrar dropdown al navegar
+// Cerrar al navegar
 const route = useRoute()
 watch(() => route.path, () => {
   closeAccountDropdown()
   closeMobileMenu()
+  closeSearch()
 })
 
 const navLinks = [
@@ -67,6 +85,56 @@ const navLinks = [
 
         <!-- Acciones -->
         <div class="flex items-center gap-3">
+
+          <!-- Búsqueda expandible (desktop) -->
+          <div class="hidden md:flex items-center">
+            <Transition
+              enter-active-class="transition duration-200 ease-out"
+              enter-from-class="opacity-0 w-0"
+              enter-to-class="opacity-100 w-48 lg:w-64"
+              leave-active-class="transition duration-150 ease-in"
+              leave-from-class="opacity-100 w-48 lg:w-64"
+              leave-to-class="opacity-0 w-0"
+            >
+              <form
+                v-if="searchOpen"
+                class="overflow-hidden"
+                @submit.prevent="submitSearch"
+              >
+                <div class="relative">
+                  <input
+                    ref="searchInput"
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Buscar productos..."
+                    :maxlength="FIELD_LIMITS.search"
+                    class="w-48 lg:w-64 h-9 py-0 pl-3 pr-8 text-sm rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-0 transition"
+                    style="outline:none;box-shadow:none"
+                    @keydown.esc="closeSearch"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    @click="closeSearch"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </form>
+            </Transition>
+
+            <button
+              class="p-1 text-gray-600 hover:text-gray-900 transition-colors"
+              aria-label="Buscar"
+              @click="searchOpen ? submitSearch() : openSearch()"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+            </button>
+          </div>
 
           <!-- Carrito -->
           <button
@@ -208,6 +276,24 @@ const navLinks = [
       leave-to-class="opacity-0 -translate-y-2"
     >
       <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-100 bg-white">
+
+        <!-- Búsqueda móvil -->
+        <div class="px-4 pt-3 pb-2">
+          <form class="relative" @submit.prevent="submitSearch">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Buscar productos..."
+              :maxlength="FIELD_LIMITS.search"
+              class="w-full h-10 pl-9 pr-4 text-sm rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-0 bg-gray-50 transition"
+              style="outline:none;box-shadow:none"
+            />
+          </form>
+        </div>
+
         <nav class="px-4 py-3 space-y-1">
           <NuxtLink
             v-for="link in navLinks"

@@ -11,5 +11,6 @@ export function useRelatedProducts(slug: MaybeRef<string>) {
   return useAsyncData<Product[]>(
     `related-${toValue(slug)}`,
     () => $fetch(`/api/products/${toValue(slug)}/related`),
+    { lazy: true },
   )
 }

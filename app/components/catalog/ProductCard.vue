@@ -21,7 +21,16 @@ async function handleAddToCart(e: MouseEvent) {
 
   isAdding.value = true
   try {
-    await addItem({ productId: props.product.id, quantity: 1 })
+    await addItem(
+      { productId: props.product.id, quantity: 1 },
+      {
+        name: props.product.name,
+        slug: props.product.slug,
+        image: props.product.images[0]?.url ?? null,
+        price: props.product.price,
+        sku: props.product.sku,
+      },
+    )
     added.value = true
     setTimeout(() => { added.value = false }, 2000)
   }

@@ -8,10 +8,9 @@
  * cambiando únicamente server/repositories/index.ts.
  */
 
-import type { ICartRepository } from '../../types/cart.repository'
+import type { ICartRepository, CartProductSnapshot } from '../../types/cart.repository'
 import type { Cart, CartItem, CartTotals } from '~~/shared/types/cart.types'
 import type { AddToCartPayload } from '~~/shared/types/api.types'
-import { MOCK_PRODUCTS } from './products.data'
 
 // ─── Almacenamiento en memoria ────────────────────────────────────────────────
 const CART_STORE = new Map<string, Cart>()
@@ -60,20 +59,12 @@ export class MockCartRepository implements ICartRepository {
     return cloneCart(cart)
   }
 
-  async addItem(cartId: string, payload: AddToCartPayload): Promise<Cart> {
+  async addItem(cartId: string, payload: AddToCartPayload, product: CartProductSnapshot): Promise<Cart> {
     const cart = CART_STORE.get(cartId)
     if (!cart) throw new Error('Carrito no encontrado')
 
-    const product = MOCK_PRODUCTS.find((p) => p.id === payload.productId)
-    if (!product) throw new Error(`Producto ${payload.productId} no encontrado`)
+    const unitPrice = product.price
 
-    const variant = payload.variantId
-      ? (product.variants.find((v) => v.id === payload.variantId) ?? null)
-      : null
-
-    const unitPrice = variant?.price ?? product.price
-
-    // Si el item ya existe, incrementa la cantidad
     const existingIdx = cart.items.findIndex(
       (i) =>
         i.productId === payload.productId &&
@@ -87,16 +78,16 @@ export class MockCartRepository implements ICartRepository {
     }
     else {
       cart.items.push({
-        id: payload.productId,         // En PS8 sería el id_cart_product
-        productId: product.id,
+        id: payload.productId,
+        productId: payload.productId,
         variantId: payload.variantId ?? null,
         name: product.name,
         slug: product.slug,
-        image: product.images[0]?.url ?? null,
+        image: product.image,
         quantity: payload.quantity,
         unitPrice,
         totalPrice: round(unitPrice * payload.quantity),
-        sku: variant?.sku ?? product.sku,
+        sku: product.sku,
       })
     }
 

@@ -19,6 +19,12 @@ export interface IProductRepository {
   findAll(filters: ProductFilters): Promise<PaginatedResult<Product>>
 
   /**
+   * Devuelve un único producto por su ID numérico.
+   * Retorna null si no existe.
+   */
+  findById(id: number): Promise<Product | null>
+
+  /**
    * Devuelve un único producto por su slug URL-friendly.
    * Retorna null si no existe ningún producto con ese slug.
    */

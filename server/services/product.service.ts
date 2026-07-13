@@ -17,6 +17,7 @@
 import type { Product } from '~~/shared/types/product.types'
 import type { ProductFilters, PaginatedResult } from '~~/shared/types/api.types'
 import { productRepository } from '../repositories'
+import { stripHtml } from '../lib/prestashop/transformers'
 
 export const ProductService = {
   /**
@@ -28,7 +29,7 @@ export const ProductService = {
 
     return {
       ...result,
-      items: result.items.filter((p) => p.isAvailable),
+      items: result.items.filter(p => p.isAvailable).map(normalizeProduct),
     }
   },
 
@@ -41,10 +42,22 @@ export const ProductService = {
 
     if (!product || !product.isAvailable) return null
 
-    return product
+    return normalizeProduct(product)
   },
 
   async getRelatedProducts(slug: string, limit = 4): Promise<Product[]> {
-    return productRepository.findRelated(slug, limit)
+    const products = await productRepository.findRelated(slug, limit)
+    return products.map(normalizeProduct)
   },
+}
+
+/**
+ * Normaliza un producto garantizando que shortDescription sea texto plano
+ * sin etiquetas HTML, independientemente de si el dato viene de PS o de los mocks.
+ */
+function normalizeProduct(product: Product): Product {
+  return {
+    ...product,
+    shortDescription: stripHtml(product.shortDescription),
+  }
 }
