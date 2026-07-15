@@ -15,8 +15,8 @@ const paymentId = computed(() => String(route.query.payment ?? ''))
 
 const paymentLabels: Record<string, string> = {
   bank_wire: 'Transferencia bancaria',
-  check: 'Pago con cheque',
   cash_on_delivery: 'Contra entrega',
+  webpay: 'Webpay',
 }
 
 const paymentLabel = computed(() => paymentLabels[paymentId.value] ?? paymentId.value)
@@ -61,7 +61,17 @@ function formatPrice(value: number): string {
             <p class="text-xs text-green-600 font-semibold uppercase tracking-wider mb-1">Número de pedido</p>
             <p class="text-2xl font-bold text-gray-900 font-mono tracking-wide">{{ reference }}</p>
           </div>
-          <span class="inline-flex items-center gap-1.5 bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1.5 rounded-full">
+          <span
+            v-if="paymentId === 'webpay'"
+            class="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-semibold px-3 py-1.5 rounded-full"
+          >
+            <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+            Pago confirmado
+          </span>
+          <span
+            v-else
+            class="inline-flex items-center gap-1.5 bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1.5 rounded-full"
+          >
             <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
             Pendiente de pago
           </span>
@@ -145,6 +155,22 @@ function formatPrice(value: number): string {
                 <p class="text-sm text-green-700 leading-relaxed">
                   Pagarás al recibir tu pedido. El repartidor llevará un terminal de pago.
                   Puedes pagar en efectivo o con tarjeta.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="paymentId === 'webpay'" class="px-6 py-4 bg-green-50">
+            <div class="flex gap-3">
+              <svg class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p class="text-sm font-semibold text-green-800 mb-1">Pago acreditado</p>
+                <p class="text-sm text-green-700 leading-relaxed">
+                  Tu pago con Webpay fue procesado exitosamente. El número de seguimiento es
+                  <strong>{{ reference }}</strong>. Recibirás la confirmación por email.
                 </p>
               </div>
             </div>

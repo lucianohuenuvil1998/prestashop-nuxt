@@ -183,4 +183,9 @@ export const mockOrderStore = {
     if (!order || order.customer.id !== customerId) return null
     return cloneOrder(order)
   },
+
+  /** Busca un pedido solo por ID (para la página de resultado post-pago). */
+  findById(orderId: number): Order | null {
+    return ordersById.get(orderId) ? cloneOrder(ordersById.get(orderId)!) : null
+  },
 }

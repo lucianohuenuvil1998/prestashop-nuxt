@@ -9,7 +9,7 @@
  */
 
 import type { Order, Address } from '~~/shared/types/order.types'
-import type { PlaceOrderPayload, GuestAddressPayload } from '~~/shared/types/api.types'
+import type { PlaceOrderPayload, GuestAddressPayload, OrderResult } from '~~/shared/types/api.types'
 import type { Customer } from '~~/shared/types/customer.types'
 import type { CheckoutSummary, ShippingMethod, PaymentMethod } from '~~/shared/types/checkout.types'
 import { cartRepository } from '../repositories'
@@ -51,16 +51,20 @@ const MOCK_PAYMENT_METHODS: PaymentMethod[] = [
     description: 'Tu pedido se confirma al acreditarse el pago. Te enviaremos los datos bancarios por email.',
   },
   {
-    id: 'check',
-    name: 'Pago con cheque',
-    description: 'Envía tu cheque junto con el número de pedido. Procesamos al recibirlo.',
-  },
-  {
     id: 'cash_on_delivery',
     name: 'Contra entrega',
     description: 'Paga en efectivo o con tarjeta al recibir tu pedido. Sin costo adicional.',
   },
+  {
+    id: 'webpay',
+    name: 'Webpay',
+    description: 'Paga con tarjeta de crédito o débito de forma segura. Serás redirigido al sitio de Webpay.',
+    requiresRedirect: true,
+  },
 ]
+
+/** Métodos de pago que redirigen a un sitio externo. */
+const REDIRECT_PAYMENT_IDS = new Set(['webpay'])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -115,7 +119,7 @@ export const CheckoutService = {
   async placeOrder(
     payload: PlaceOrderPayload,
     customer: Customer | null,
-  ): Promise<Order> {
+  ): Promise<OrderResult> {
     const cart = await cartRepository.findById(payload.cartId)
     if (!cart || cart.items.length === 0) {
       throw new Error('El carrito está vacío')
@@ -182,6 +186,14 @@ export const CheckoutService = {
 
     mockOrderStore.save(order)
 
-    return order
+    // Métodos con redirección externa (Webpay, PayPal, etc.)
+    if (REDIRECT_PAYMENT_IDS.has(payload.paymentMethodId)) {
+      // En producción, aquí se llama al módulo de PS para obtener la URL real del gateway.
+      // En mock, simulamos el retorno exitoso directamente.
+      const redirectUrl = `/checkout/result?orderId=${order.id}&status=success`
+      return { order, redirectUrl }
+    }
+
+    return { order }
   },
 }

@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const order = await CheckoutService.placeOrder({
+    const result = await CheckoutService.placeOrder({
       cartId,
       shippingAddressId: body.shippingAddressId,
       billingAddressId: body.billingAddressId,
@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
 
     clearCartId(event)
 
-    return order
+    return result
   }
   catch (err) {
     const message = err instanceof Error ? err.message : 'Error al procesar el pedido'

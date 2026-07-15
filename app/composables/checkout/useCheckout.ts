@@ -11,7 +11,7 @@
 import type { CheckoutSummary, ShippingMethod, CheckoutAddressInput } from '~~/shared/types/checkout.types'
 import type { AddressInput } from '~~/shared/types/customer.types'
 import type { Address } from '~~/shared/types/order.types'
-import type { Order } from '~~/shared/types/order.types'
+import type { OrderResult } from '~~/shared/types/api.types'
 import { validateCheckoutAddress, validateEmail, FIELD_LIMITS } from '~~/shared/validation/form.validation'
 import { useCartStore } from '../../stores/cart.store'
 import { useAuthStore } from '../../stores/auth.store'
@@ -260,15 +260,27 @@ export function useCheckout() {
         }
       }
 
-      const order = await $fetch<Order>('/api/checkout/order', {
+      const result = await $fetch<OrderResult>('/api/checkout/order', {
         method: 'POST',
         body: orderBody,
       })
 
+      if (result.redirectUrl) {
+        // Pago con redirección externa (Webpay, PayPal, etc.)
+        // No limpiar el carrito aquí: la recarga de página lo resetea sola
+        // (el servidor ya eliminó la cookie cart_id).
+        window.location.assign(result.redirectUrl)
+        return
+      }
+
+      // Pago sin redirección: limpiar el store del cliente
+      cartStore.clearCart()
+
+      // Pago sin redirección (transferencia, contra entrega)
       const confirmationQuery = {
-        reference: order.reference,
-        total: String(order.totals.total),
-        currency: order.totals.currency,
+        reference: result.order.reference,
+        total: String(result.order.totals.total),
+        currency: result.order.totals.currency,
         payment: selectedPaymentId.value!,
       }
 
@@ -279,9 +291,6 @@ export function useCheckout() {
         const params = new URLSearchParams(confirmationQuery)
         window.location.assign(`/checkout/confirmation?${params.toString()}`)
       }
-
-      // El servidor ya limpió la cookie — resetear el store del cliente
-      cartStore.clearCart()
     }
     catch (err) {
       stepError.value = getFetchErrorMessage(

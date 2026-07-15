@@ -20,6 +20,8 @@ export interface PaymentMethod {
   id: string
   name: string
   description: string
+  /** Si es true, el pago se completa en un sitio externo (ej: Webpay, PayPal). */
+  requiresRedirect?: boolean
 }
 
 export interface CheckoutSummary {

@@ -86,3 +86,16 @@ export interface PlaceOrderCustomer {
   lastName: string
   email: string
 }
+
+/**
+ * Respuesta del endpoint POST /api/checkout/order.
+ *
+ * - Si el pago se resuelve en el sitio (transferencia, efectivo): `order` viene completo.
+ * - Si el pago requiere redirección (Webpay, PayPal): `redirectUrl` apunta al sitio externo
+ *   y `order` tiene status 'awaiting_payment'. Al volver, el resultado llega por query params.
+ */
+export interface OrderResult {
+  order: import('./order.types').Order
+  /** URL del gateway externo. Solo presente para métodos que requieren redirección. */
+  redirectUrl?: string
+}
