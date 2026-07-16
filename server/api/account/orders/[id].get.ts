@@ -1,12 +1,7 @@
-/**
- * GET /api/account/orders/:id
- *
- * Devuelve el detalle de un pedido del cliente autenticado.
- */
-
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { OrderService } from '../../../services/order.service'
 import { getAuthenticatedCustomer } from '../../../utils/auth'
+import { getAuthToken } from '../../../utils/session'
 
 export default defineEventHandler(async (event) => {
   const customer = getAuthenticatedCustomer(event)
@@ -17,5 +12,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'ID de pedido inválido' })
   }
 
-  return OrderService.getOrderById(orderId, customer.id)
+  const token = getAuthToken(event) ?? undefined
+  return OrderService.getOrderById(orderId, customer.id, token)
 })

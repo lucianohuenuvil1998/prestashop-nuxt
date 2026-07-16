@@ -30,5 +30,9 @@ export default defineNuxtConfig({
       baseUrl: '',   // NUXT_PRESTASHOP_BASE_URL
       apiKey: '',    // NUXT_PRESTASHOP_API_KEY
     },
+    headlessApi: {
+      url: '',       // NUXT_HEADLESS_API_URL
+      jwtSecret: '', // NUXT_HEADLESS_JWT_SECRET
+    },
   },
 })

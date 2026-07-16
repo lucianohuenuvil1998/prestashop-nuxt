@@ -1,14 +1,10 @@
-/**
- * GET /api/account/orders
- *
- * Devuelve el historial de pedidos del cliente autenticado.
- */
-
 import { defineEventHandler } from 'h3'
 import { OrderService } from '../../../services/order.service'
 import { getAuthenticatedCustomer } from '../../../utils/auth'
+import { getAuthToken } from '../../../utils/session'
 
 export default defineEventHandler(async (event) => {
   const customer = getAuthenticatedCustomer(event)
-  return OrderService.getOrdersForCustomer(customer.id)
+  const token = getAuthToken(event) ?? undefined
+  return OrderService.getOrdersForCustomer(customer.id, token)
 })
