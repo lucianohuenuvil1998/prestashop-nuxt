@@ -10,7 +10,7 @@ onMounted(() => {
 
 const reference = computed(() => String(route.query.reference ?? ''))
 const total = computed(() => Number(route.query.total ?? 0))
-const currency = computed(() => String(route.query.currency ?? 'USD'))
+const currency = computed(() => String(route.query.currency ?? 'CLP'))
 const paymentId = computed(() => String(route.query.payment ?? ''))
 
 const paymentLabels: Record<string, string> = {

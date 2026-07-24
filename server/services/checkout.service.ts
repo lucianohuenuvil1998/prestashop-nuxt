@@ -14,6 +14,9 @@ import type { Customer } from '~~/shared/types/customer.types'
 import type { CheckoutSummary, ShippingMethod, PaymentMethod } from '~~/shared/types/checkout.types'
 import { cartRepository } from '../repositories'
 import { mockOrderStore } from '../repositories/mock/mock-order.store'
+import { haGet } from '../lib/headlessapi/client'
+
+const useHeadlessApi = process.env.USE_PRESTASHOP === 'true'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -21,26 +24,18 @@ const MOCK_SHIPPING_METHODS: ShippingMethod[] = [
   {
     id: 1,
     name: 'Envío estándar',
-    description: 'Entrega a domicilio',
-    price: 4.99,
-    currency: 'USD',
+    description: 'Entrega a domicilio en todo Chile',
+    price: 3990,
+    currency: 'CLP',
     delay: '5-7 días hábiles',
   },
   {
     id: 2,
     name: 'Envío express',
     description: 'Entrega prioritaria',
-    price: 12.99,
-    currency: 'USD',
+    price: 6990,
+    currency: 'CLP',
     delay: '2-3 días hábiles',
-  },
-  {
-    id: 3,
-    name: 'Envío mismo día',
-    description: 'Solo zonas seleccionadas (CABA)',
-    price: 19.99,
-    currency: 'USD',
-    delay: 'Hoy hasta las 20 h',
   },
 ]
 
@@ -103,6 +98,30 @@ function guestAddressToAddress(g: GuestAddressPayload): Address {
 export const CheckoutService = {
   /** Devuelve los métodos de envío y pago disponibles. */
   async getSummary(): Promise<CheckoutSummary> {
+    if (useHeadlessApi) {
+      const raw = await haGet<{
+        shippingMethods: Array<{ id: number; name: string; description: string; price: number; delay: string }>
+        paymentMethods: Array<{ id: string; name: string; description: string; requiresRedirect: boolean }>
+      }>('checkout', 'summary')
+
+      return {
+        shippingMethods: raw.shippingMethods.map(m => ({
+          id: m.id,
+          name: m.name,
+          description: m.description || m.delay || '',
+          price: m.price ?? 0,
+          currency: 'CLP',
+          delay: m.delay || '',
+        })),
+        paymentMethods: raw.paymentMethods.map(m => ({
+          id: m.id,
+          name: m.name,
+          description: m.description || '',
+          requiresRedirect: m.requiresRedirect ?? false,
+        })),
+      }
+    }
+
     return {
       shippingMethods: MOCK_SHIPPING_METHODS,
       paymentMethods: MOCK_PAYMENT_METHODS,

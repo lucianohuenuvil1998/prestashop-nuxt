@@ -47,7 +47,7 @@ function mapOrderSummary(raw: Record<string, unknown>): Order {
       tax: 0,
       discount: 0,
       total: raw.total as number,
-      currency: (raw.currency as string) || 'USD',
+      currency: (raw.currency as string) || 'CLP',
     },
     createdAt: raw.createdAt as string,
   }
@@ -88,7 +88,7 @@ function mapOrderDetail(raw: Record<string, unknown>): Order {
       tax: totals.tax as number,
       discount: totals.discount as number,
       total: totals.total as number,
-      currency: (totals.currency as string) || 'USD',
+      currency: (totals.currency as string) || 'CLP',
     },
     createdAt: raw.createdAt as string,
   }

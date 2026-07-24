@@ -98,7 +98,7 @@ async function handleRemove() {
 
         <!-- Precio total del item -->
         <span class="text-sm font-semibold text-gray-900">
-          {{ formatPrice(item.totalPrice, 'USD') }}
+          {{ formatPrice(item.totalPrice, 'CLP') }}
         </span>
       </div>
     </div>

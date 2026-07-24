@@ -278,17 +278,6 @@ useSeoMeta({ title: 'Crear cuenta' })
 
             <label class="flex items-start gap-3 cursor-pointer">
               <input
-                v-model="form.partnerOffers"
-                type="checkbox"
-                class="mt-0.5 h-4 w-4 accent-indigo-600 rounded"
-              />
-              <span class="text-sm text-gray-600">
-                Acepto recibir ofertas de nuestros socios comerciales.
-              </span>
-            </label>
-
-            <label class="flex items-start gap-3 cursor-pointer">
-              <input
                 v-model="form.acceptTerms"
                 type="checkbox"
                 required

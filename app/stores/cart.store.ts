@@ -14,7 +14,7 @@ export const useCartStore = defineStore('cart', {
     cartId: (state): string | null => state.cart?.id ?? null,
     itemCount: (state): number => state.cart?.itemCount ?? 0,
     total: (state): number => state.cart?.totals.total ?? 0,
-    currency: (state): string => state.cart?.totals.currency ?? 'USD',
+    currency: (state): string => state.cart?.totals.currency ?? 'CLP',
     isEmpty: (state): boolean => (state.cart?.itemCount ?? 0) === 0,
   },
 

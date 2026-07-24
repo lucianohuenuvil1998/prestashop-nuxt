@@ -28,7 +28,7 @@ function computeTotals(items: CartItem[]): CartTotals {
     tax: 0,         // Los precios incluyen IVA (configuración PS8 por defecto)
     discount: 0,
     total: subtotal,
-    currency: 'USD',
+    currency: 'CLP',
   }
 }
 

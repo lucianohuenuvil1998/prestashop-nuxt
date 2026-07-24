@@ -1,9 +1,9 @@
-export function formatPrice(amount: number, currency = 'USD', locale = 'es'): string {
+export function formatPrice(amount: number, currency = 'CLP', locale = 'es-CL'): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount)
 }
 

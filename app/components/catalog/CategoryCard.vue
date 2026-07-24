@@ -11,24 +11,9 @@ defineProps<{
     :to="`/category/${category.slug}`"
     class="card group overflow-hidden hover:shadow-md transition-shadow duration-200"
   >
-    <!-- Imagen -->
-    <div class="relative aspect-[3/2] overflow-hidden bg-gray-100">
-      <img
-        v-if="category.image"
-        :src="category.image"
-        :alt="category.name"
-        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-      />
-      <div v-else class="flex h-full items-center justify-center bg-indigo-50 text-indigo-300">
-        <svg class="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-        </svg>
-      </div>
-      <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-      <div class="absolute bottom-0 left-0 right-0 p-4">
-        <h3 class="text-lg font-bold text-white">{{ category.name }}</h3>
-      </div>
+    <!-- Contenedor sin imagen -->
+    <div class="relative flex items-center justify-center bg-indigo-50 px-6 py-10 transition-colors duration-200 group-hover:bg-indigo-100">
+      <h3 class="text-center text-lg font-bold text-indigo-800">{{ category.name }}</h3>
     </div>
 
     <!-- Descripción -->

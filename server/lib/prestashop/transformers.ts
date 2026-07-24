@@ -141,7 +141,7 @@ export function transformProduct(
     shortDescription: psLang(ps.description_short),
     price: psPrice(ps.price),
     regularPrice: psPrice(ps.price),
-    currency: 'ARS',
+    currency: 'CLP',
     images: imageIds.map((imgId, i) => ({
       id: imgId,
       url: psImageUrl(ps.id, imgId),
@@ -161,30 +161,25 @@ export function transformProduct(
 // ─── Category ─────────────────────────────────────────────────────────────────
 
 export function transformCategory(ps: PsCategory, withImage = false): Category {
-  const { baseUrl, apiKey } = getCategoryImageConfig()
+  const baseUrl = getCategoryBaseUrl()
   return {
     id: ps.id,
     name: psLang(ps.name),
     slug: psLang(ps.link_rewrite, String(ps.id)),
     description: stripHtml(psLang(ps.description)),
     parentId: ps.id_parent ? Number(ps.id_parent) : null,
-    image: withImage && baseUrl
-      ? `${baseUrl}/api/images/categories/${ps.id}?ws_key=${apiKey}`
-      : null,
+    // PS guarda imágenes de categorías en /img/c/{id}.jpg (URL pública, sin auth)
+    image: withImage && baseUrl ? `${baseUrl}/img/c/${ps.id}.jpg` : null,
     position: 0,
   }
 }
 
-function getCategoryImageConfig(): { baseUrl: string; apiKey: string } {
+function getCategoryBaseUrl(): string {
   try {
-    const config = useRuntimeConfig()
-    return {
-      baseUrl: config.prestashop.baseUrl.replace(/\/$/, ''),
-      apiKey: config.prestashop.apiKey,
-    }
+    return useRuntimeConfig().prestashop.baseUrl.replace(/\/$/, '')
   }
   catch {
-    return { baseUrl: '', apiKey: '' }
+    return ''
   }
 }
 
@@ -225,7 +220,7 @@ export function transformCart(ps: PsCart, ctx: CartTransformContext): Cart {
     tax: 0,
     discount: 0,
     total: subtotal,
-    currency: 'ARS',
+    currency: 'CLP',
   }
 
   return {

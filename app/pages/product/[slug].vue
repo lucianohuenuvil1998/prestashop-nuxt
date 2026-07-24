@@ -61,6 +61,12 @@ const isInStock = computed(() =>
     : product.value?.stock.isInStock ?? false,
 )
 
+const stockQuantity = computed(() =>
+  selectedVariant.value
+    ? selectedVariant.value.stock.quantity
+    : product.value?.stock.quantity ?? 0,
+)
+
 function selectVariant(variant: ProductVariant) {
   selectedVariant.value = selectedVariant.value?.id === variant.id ? null : variant
 }
@@ -174,11 +180,18 @@ useSeoMeta({
         <!-- Stock -->
         <div class="mt-3">
           <span
-            v-if="isInStock"
+            v-if="isInStock && stockQuantity <= 5"
+            class="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600"
+          >
+            <span class="h-2 w-2 rounded-full bg-amber-400" />
+            ¡Solo {{ stockQuantity }} {{ stockQuantity === 1 ? 'unidad' : 'unidades' }} disponible{{ stockQuantity === 1 ? '' : 's' }}!
+          </span>
+          <span
+            v-else-if="isInStock"
             class="inline-flex items-center gap-1.5 text-sm font-medium text-green-700"
           >
             <span class="h-2 w-2 rounded-full bg-green-500" />
-            En stock
+            En stock · {{ stockQuantity }} unidades disponibles
           </span>
           <span
             v-else
